@@ -235,12 +235,6 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
                     <div className={`${styles.colInfo} ${styles.sortable}`} onClick={() => handleSort('circle')}>
                         Circle / Item <SortIcon column="circle" />
                     </div>
-                    <div className={`${styles.colMeta} ${styles.sortable}`} onClick={() => handleSort('priority')}>
-                        Meta <SortIcon column="priority" />
-                    </div>
-                    <div className={`${styles.colBuyer} ${styles.sortable}`} onClick={() => handleSort('buyer')}>
-                        Buyer <SortIcon column="buyer" />
-                    </div>
                     <div className={styles.colAction}>Img</div>
                 </div>
 
@@ -320,25 +314,6 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            {/* 3. Meta (Qty & Priority) - Hidden on Mobile */}
-                            <div className={`${styles.colMeta} ${styles.desktopOnly}`}>
-                                <div className={styles.qtyBadge}>x{item.quantity || 1}</div>
-                                <div className={`${styles.priorityBadge} ${styles[item.priority?.toLowerCase()]}`}>
-                                    {item.priority?.substring(0, 3) || "Mid"}
-                                </div>
-                            </div>
-
-                            {/* 4. Buyer - Hidden on Mobile */}
-                            <div className={`${styles.colBuyer} ${styles.desktopOnly}`}>
-                                {item.buyer ? (
-                                    <div className={styles.buyerTag} title={item.buyer}>
-                                        {item.buyer.substring(0, 1)}
-                                    </div>
-                                ) : (
-                                    <span className={styles.buyerEmpty}>-</span>
-                                )}
                             </div>
 
                             {/* 5. Image & Delete Action */}

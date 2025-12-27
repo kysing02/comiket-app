@@ -18,7 +18,7 @@
 
 .headerContent {
   width: 100%;
-  padding: 0 0.5rem;
+  padding: 0 5px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
@@ -81,8 +81,8 @@
 .contentScroll {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem 0;
-  /* Removed horizontal padding for edge-to-edge mobile */
+  padding: 1rem 5px;
+  /* Precisely 5px horizontal padding */
   padding-bottom: 120px;
   /* Space for FAB and Nav */
   width: 100%;
@@ -637,6 +637,21 @@
   color: var(--muted);
   font-size: 0.75rem;
   opacity: 0.6;
+}
+
+.loadingWrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 3rem;
+  width: 100%;
+}
+
+.loadingItems {
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 0.9rem;
 }
 
 .settingsFooter p {

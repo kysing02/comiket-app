@@ -286,7 +286,9 @@ export default function Home() {
 
         <section className={styles.feedContainer}>
           {loading ? (
-            <p className={styles.loadingItems}>Loading items...</p>
+            <div className={styles.loadingWrapper}>
+              <p className={styles.loadingItems}>Loading items...</p>
+            </div>
           ) : activeTab === "list" ? (
             items.length > 0 ? (
               <ShoppingList items={items} onUpdate={() => { fetchItems(); fetchCircles(); }} onEditCircle={(circle, step) => { setEditingCircle(circle); setModalStep(step || 1); setIsModalOpen(true); }} />
