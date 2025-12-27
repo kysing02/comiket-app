@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -44,6 +44,7 @@ export default function Home() {
   const [feedSearch, setFeedSearch] = useState("");
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isOffline, setIsOffline] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   /* Load Settings from LocalStorage */
   useEffect(() => {
@@ -117,6 +118,19 @@ export default function Home() {
     const newList = [...appSettings.buyerList];
     newList[index] = name;
     updateSetting("buyerList", newList);
+  };
+
+  const handleTabClick = (tab: string) => {
+    if (activeTab === tab) {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTo({
+          top: 0,
+          behavior: "smooth"
+        });
+      }
+    } else {
+      setActiveTab(tab);
+    }
   };
 
   // ... existing fetch logic ...
@@ -256,7 +270,7 @@ export default function Home() {
       </header>
 
       {/* Main Content Area */}
-      <div className={styles.contentScroll}>
+      <div className={styles.contentScroll} ref={scrollRef}>
         <div className={styles.viewControls}>
           <div className={`${styles.filterChip} glass`}>
             <Filter size={14} />
@@ -468,38 +482,35 @@ export default function Home() {
       <nav className={styles.bottomNav}>
         <button
           className={activeTab === "feed" ? styles.active : ""}
-          onClick={() => setActiveTab("feed")}
+          onClick={() => handleTabClick("feed")}
         >
           <Compass size={22} />
           <span>Feed</span>
         </button>
         <button
           className={activeTab === "list" ? styles.active : ""}
-          onClick={() => setActiveTab("list")}
+          onClick={() => handleTabClick("list")}
         >
           <ShoppingBag size={22} />
           <span>List</span>
         </button>
-
-        <div className={styles.fabContainer}>
-          <button className={styles.fab} onClick={() => { setEditingCircle(null); setIsModalOpen(true); }}>
-            <Plus size={32} color="white" />
-          </button>
-        </div>
-
+        <div style={{ width: "60px" }}></div>
         <button
           className={activeTab === "map" ? styles.active : ""}
-          onClick={() => setActiveTab("map")}
+          onClick={() => handleTabClick("map")}
         >
           <MapPin size={22} />
           <span>Map</span>
         </button>
         <button
           className={activeTab === "settings" ? styles.active : ""}
-          onClick={() => setActiveTab("settings")}
+          onClick={() => handleTabClick("settings")}
         >
           <Settings size={22} />
           <span>Settings</span>
+        </button>
+        <button className={styles.fab} onClick={() => { setEditingCircle(null); setIsModalOpen(true); }} title="Add Item">
+          <Plus size={32} />
         </button>
       </nav>
       <AnimatePresence>

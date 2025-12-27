@@ -221,3 +221,12 @@
     background: rgba(239, 68, 68, 0.1);
     border-color: var(--danger);
 }
+
+@media (max-width: 600px) {
+    .card {
+        padding: 1rem 0.5rem;
+        border-right: none;
+        border-left: none;
+        border-radius: 0;
+    }
+}

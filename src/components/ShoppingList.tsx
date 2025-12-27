@@ -292,35 +292,52 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
                                         </div>
                                     </div>
                                     <div className={styles.priceLine}>
-                                        <span className={styles.itemPrice}>¥{item.price?.toLocaleString()}</span>
-                                        <button
-                                            className={styles.editBtn}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                onEditCircle(item.circles, 2);
-                                            }}
-                                            title="Edit Circle/Items"
-                                        >
-                                            <Edit2 size={14} />
-                                        </button>
+                                        <div className={styles.priceGroup}>
+                                            <span className={styles.itemPrice}>¥{item.price?.toLocaleString()}</span>
+                                            <button
+                                                className={styles.editBtn}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onEditCircle(item.circles, 2);
+                                                }}
+                                                title="Edit Circle/Items"
+                                            >
+                                                <Edit2 size={14} />
+                                            </button>
+                                        </div>
+
+                                        {/* Mobile Metadata Row */}
+                                        <div className={styles.mobileMeta}>
+                                            <span className={styles.mobileQty}>x{item.quantity || 1}</span>
+                                            <span className={`${styles.mobilePriority} ${styles[item.priority?.toLowerCase()]}`}>
+                                                {item.priority?.substring(0, 3) || "Mid"}
+                                            </span>
+                                            {item.buyer && (
+                                                <div className={styles.mobileBuyer}>
+                                                    {item.buyer.substring(0, 1)}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* 3. Meta (Qty & Priority) */}
-                            <div className={styles.colMeta}>
+                            {/* 3. Meta (Qty & Priority) - Hidden on Mobile */}
+                            <div className={`${styles.colMeta} ${styles.desktopOnly}`}>
                                 <div className={styles.qtyBadge}>x{item.quantity || 1}</div>
                                 <div className={`${styles.priorityBadge} ${styles[item.priority?.toLowerCase()]}`}>
                                     {item.priority?.substring(0, 3) || "Mid"}
                                 </div>
                             </div>
 
-                            {/* 4. Buyer */}
-                            <div className={styles.colBuyer}>
+                            {/* 4. Buyer - Hidden on Mobile */}
+                            <div className={`${styles.colBuyer} ${styles.desktopOnly}`}>
                                 {item.buyer ? (
-                                    <span className={styles.buyerTag}>{item.buyer.substring(0, 2)}</span>
+                                    <div className={styles.buyerTag} title={item.buyer}>
+                                        {item.buyer.substring(0, 1)}
+                                    </div>
                                 ) : (
-                                    <span className={styles.buyerEmpty}>--</span>
+                                    <span className={styles.buyerEmpty}>-</span>
                                 )}
                             </div>
 
