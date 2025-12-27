@@ -24,6 +24,21 @@ export async function isLikelyPriceList(imageUrl: string): Promise<boolean> {
 }
 
 /**
+ * Perform full OCR on an image and return the text.
+ */
+export async function performOCR(imageUrl: string): Promise<string> {
+  try {
+    const worker = await createWorker('jpn+eng');
+    const { data: { text } } = await worker.recognize(imageUrl);
+    await worker.terminate();
+    return text;
+  } catch (error) {
+    console.error("OCR Performance Error:", error);
+    return "";
+  }
+}
+
+/**
  * Call LLM to extract structured data from X post text and images.
  */
 export async function extractComiketData(postText: string, imageUrls: string[]) {

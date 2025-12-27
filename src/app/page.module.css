@@ -3,6 +3,8 @@
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
+  /* Prevent body scroll, use contentScroll instead */
 }
 
 .header {
@@ -15,7 +17,8 @@
 }
 
 .headerContent {
-  max-width: 800px;
+  width: 100%;
+  padding: 0 1rem;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
@@ -42,6 +45,9 @@
   align-items: center;
   justify-content: center;
   transition: background 0.2s;
+  background: transparent;
+  border: none;
+  cursor: pointer;
 }
 
 .iconBtn:hover {
@@ -51,11 +57,12 @@
 .contentScroll {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
-  padding-bottom: 100px;
-  max-width: 800px;
-  margin: 0 auto;
+  padding: 1rem 2rem;
+  /* Added horizontal padding for PC */
+  padding-bottom: 120px;
+  /* Space for FAB and Nav */
   width: 100%;
+  margin: 0 auto;
 }
 
 .viewControls {
@@ -87,6 +94,8 @@
   display: flex;
   align-items: center;
   transition: all 0.2s;
+  background: transparent;
+  border: none;
 }
 
 .toggleGroup button.active {
@@ -139,6 +148,8 @@
   font-weight: 600;
   box-shadow: 0 4px 20px var(--primary-glow);
   transition: transform 0.2s;
+  border: none;
+  cursor: pointer;
 }
 
 .primaryBtn:hover {
@@ -147,28 +158,38 @@
 
 .bottomNav {
   position: fixed;
-  bottom: 1rem;
+  bottom: 1.5rem;
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 2rem);
   max-width: 500px;
-  height: 70px;
-  display: grid;
-  grid-template-columns: 1fr 1fr 80px 1fr 1fr;
+  height: 64px;
+  display: flex;
+  /* Changed from grid to flex for better control */
+  justify-content: space-around;
   align-items: center;
-  padding: 0 1rem;
-  border-radius: 24px;
+  padding: 0 0.5rem;
+  border-radius: 20px;
   z-index: 1000;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+  background: rgba(10, 10, 11, 0.8);
 }
 
 .bottomNav button {
+  flex: 1;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: var(--muted);
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   gap: 4px;
+  transition: all 0.2s;
+  background: transparent;
+  border: none;
+  cursor: pointer;
 }
 
 .bottomNav button.active {
@@ -176,28 +197,55 @@
 }
 
 .fabContainer {
+  position: relative;
+  width: 72px;
+  /* Placeholder space in flex */
+  height: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* Solid base behind FAB to prevent "floating" look */
+.fab::after {
+  content: '';
   position: absolute;
-  top: -25px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: -6px;
+  left: -6px;
+  right: -6px;
+  bottom: -6px;
+  background: #0a0a0b;
+  border-radius: 50%;
+  z-index: -1;
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.3);
 }
 
 .fab {
-  width: 60px;
-  height: 60px;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  position: absolute;
+  top: -36px;
+  width: 68px;
+  height: 68px;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
-  border: 4px solid var(--background);
+  box-shadow: 0 10px 25px rgba(99, 102, 241, 0.5);
+  border: none;
+  /* Border handled by pseudo-element */
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+  color: white;
+  z-index: 102;
+  /* Ensure above nav */
 }
 
 .fab:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 12px 32px rgba(99, 102, 241, 0.6);
+  transform: scale(1.05) translateY(-4px);
+  box-shadow: 0 15px 35px rgba(99, 102, 241, 0.7);
+}
+
+.fab:active {
+  transform: scale(0.95);
 }
 
 @media (min-width: 768px) {
@@ -298,11 +346,9 @@
 @media (min-width: 800px) {
   .artistFeed {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 2rem;
-    justify-items: center;
-    max-width: 1200px;
-    margin: 0 auto;
+    width: 100%;
   }
 }
 
@@ -348,6 +394,7 @@
   margin-bottom: 0.75rem;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -379,6 +426,8 @@
   font-weight: 600;
   border-radius: 8px;
   transition: opacity 0.2s;
+  border: none;
+  cursor: pointer;
 }
 
 .ignoreBtn {
@@ -389,4 +438,120 @@
 .importBtn {
   background: var(--primary);
   color: white;
+}
+
+/* Settings Styles */
+.settingsArea {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding-bottom: 2rem;
+}
+
+.settingsGroup {
+  padding: 1.5rem;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.groupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.iconBtnSmall {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.buyerList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.buyerRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.buyerInput {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: white;
+  font-size: 0.9rem;
+}
+
+.removeBtn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.removeBtn:hover {
+  color: #ef4444;
+}
+
+.settingsGroup h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 0.25rem;
+}
+
+.settingItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settingItem label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.settingItem select,
+.settingItem input {
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  width: 100%;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.settingsFooter {
+  margin-top: 1rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.settingsFooter p {
+  margin-bottom: 0.25rem;
 }

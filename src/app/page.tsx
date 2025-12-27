@@ -4,14 +4,14 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
-  Grid,
   List,
   Plus,
   ShoppingBag,
   Compass,
   Settings,
   Filter,
-  MapPin
+  MapPin,
+  Trash2
 } from "lucide-react";
 import ShoppingList from "@/components/ShoppingList";
 import ArtistCard from "@/components/ArtistCard";
@@ -20,13 +20,68 @@ import AddItemModal from "@/components/AddItemModal";
 import { supabase } from "@/lib/supabase";
 
 export default function Home() {
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [activeTab, setActiveTab] = useState<"feed" | "list" | "map">("feed");
+  const [activeTab, setActiveTab] = useState("feed");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCircle, setEditingCircle] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [circles, setCircles] = useState<any[]>([]);
   const [scrapedPosts, setScrapedPosts] = useState<any[]>([]);
+  /* Settings State */
+  const [appSettings, setAppSettings] = useState<{
+    aiModel: string;
+    ocrMethod: string;
+    defaultBuyer: string;
+    buyerList: string[];
+  }>({
+    aiModel: "gpt-4o-mini",
+    ocrMethod: "combined",
+    defaultBuyer: "",
+    buyerList: ["Me", "Friend A", "Friend B"]
+  });
+
+  /* Load Settings from LocalStorage */
+  useEffect(() => {
+    const savedSettings = localStorage.getItem("comiket_settings");
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        // Ensure buyerList exists for backward compatibility
+        if (!parsed.buyerList || !Array.isArray(parsed.buyerList)) {
+          parsed.buyerList = ["Me", "Friend A", "Friend B"];
+        }
+        setAppSettings(parsed);
+      } catch (e) {
+        console.error("Failed to parse settings", e);
+      }
+    }
+  }, []);
+
+  /* Save Settings */
+  const updateSetting = (key: string, value: any) => {
+    const newSettings = { ...appSettings, [key]: value };
+    setAppSettings(newSettings);
+    localStorage.setItem("comiket_settings", JSON.stringify(newSettings));
+  };
+
+  const addBuyer = () => {
+    const newBuyer = `Friend ${appSettings.buyerList.length + 1}`;
+    updateSetting("buyerList", [...appSettings.buyerList, newBuyer]);
+  };
+
+  const removeBuyer = (index: number) => {
+    const newList = [...appSettings.buyerList];
+    newList.splice(index, 1);
+    updateSetting("buyerList", newList);
+  };
+
+  const updateBuyerName = (index: number, name: string) => {
+    const newList = [...appSettings.buyerList];
+    newList[index] = name;
+    updateSetting("buyerList", newList);
+  };
+
+  // ... existing fetch logic ...
+
   const [loading, setLoading] = useState(true);
 
   const fetchItems = async () => {
@@ -35,9 +90,9 @@ export default function Home() {
       const { data, error } = await supabase
         .from("items")
         .select(`
-          *,
-          circles (*)
-        `)
+      *,
+      circles (*)
+      `)
         .eq("is_wanted", true)
         .order("created_at", { ascending: false });
 
@@ -55,9 +110,9 @@ export default function Home() {
       const { data, error } = await supabase
         .from("circles")
         .select(`
-          *,
-          items (*)
-        `)
+      *,
+      items (*)
+      `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -87,6 +142,26 @@ export default function Home() {
     fetchItems();
     fetchCircles();
     fetchScrapedPosts();
+
+    // Set up real-time subscription for scraped_posts
+    const channel = supabase
+      .channel("scraped_posts_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "scraped_posts",
+        },
+        () => {
+          fetchScrapedPosts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleIgnorePost = async (postId: string) => {
@@ -101,7 +176,8 @@ export default function Home() {
       x_url: post.url,
       map_url: post.image_urls?.[0] || "",
       // Pass the raw data for AI to process further
-      scrapedContent: post.content
+      scrapedContent: post.content,
+      scraped_id: post.id
     });
     setIsModalOpen(true);
   };
@@ -116,7 +192,7 @@ export default function Home() {
             <button className={styles.iconBtn}>
               <Search size={20} />
             </button>
-            <button className={styles.iconBtn}>
+            <button className={styles.iconBtn} onClick={() => setActiveTab("settings")}>
               <Settings size={20} />
             </button>
           </div>
@@ -128,22 +204,12 @@ export default function Home() {
         <div className={styles.viewControls}>
           <div className={`${styles.filterChip} glass`}>
             <Filter size={14} />
-            <span>{activeTab === "feed" ? "Scraped Posts" : "My List"}</span>
+            <span>{activeTab === "feed" ? "Scraped Posts" : activeTab === "list" ? "My List" : activeTab === "settings" ? "Settings" : "Event Map"}</span>
           </div>
           {activeTab === "list" && (
-            <div className={`${styles.toggleGroup} glass`}>
-              <button
-                className={viewMode === "grid" ? styles.active : ""}
-                onClick={() => setViewMode("grid")}
-              >
-                <Grid size={18} />
-              </button>
-              <button
-                className={viewMode === "list" ? styles.active : ""}
-                onClick={() => setViewMode("list")}
-              >
-                <List size={18} />
-              </button>
+            <div className={`${styles.filterChip} glass`}>
+              <List size={14} />
+              <span>items</span>
             </div>
           )}
         </div>
@@ -166,6 +232,87 @@ export default function Home() {
                 </button>
               </div>
             )
+          ) : activeTab === "settings" ? (
+            <div className={styles.settingsArea}>
+              <h2 className={styles.sectionTitle}>App Settings</h2>
+
+              <div className={`${styles.settingsGroup} glass`}>
+                <h3>AI & OCR Configuration</h3>
+                <div className={styles.settingItem}>
+                  <label>AI Model</label>
+                  <select
+                    value={appSettings.aiModel}
+                    onChange={(e) => updateSetting("aiModel", e.target.value)}
+                    className="glass"
+                  >
+                    <option value="gpt-4o-mini">GPT-4o mini (Current)</option>
+                    <option value="gemini-3-flash-preview">Gemini 3.0 Flash Preview</option>
+                  </select>
+                </div>
+                <div className={styles.settingItem}>
+                  <label>OCR Method</label>
+                  <select
+                    value={appSettings.ocrMethod}
+                    onChange={(e) => updateSetting("ocrMethod", e.target.value)}
+                    className="glass"
+                  >
+                    <option value="combined">Tesseract + AI (Recommended)</option>
+                    <option value="vision">Vision Only (Fastest)</option>
+                    <option value="tesseract">Tesseract Only (Local)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className={`${styles.settingsGroup} glass`}>
+                <div className={styles.groupHeader}>
+                  <h3>Buyer Management</h3>
+                  <button className={styles.iconBtnSmall} onClick={addBuyer}>
+                    <Plus size={16} /> Add
+                  </button>
+                </div>
+                <div className={styles.buyerList}>
+                  {appSettings.buyerList.map((buyer, index) => (
+                    <div key={index} className={styles.buyerRow}>
+                      <input
+                        type="text"
+                        value={buyer}
+                        onChange={(e) => updateBuyerName(index, e.target.value)}
+                        className={styles.buyerInput}
+                      />
+                      <button className={styles.removeBtn} onClick={() => removeBuyer(index)}>
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className={styles.settingItem}>
+                  <label>Default Buyer (Auto-fill)</label>
+                  <select
+                    value={appSettings.defaultBuyer}
+                    onChange={(e) => updateSetting("defaultBuyer", e.target.value)}
+                    className="glass"
+                  >
+                    <option value="">None (Select manually)</option>
+                    {appSettings.buyerList.map(b => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className={styles.settingsFooter}>
+                <p>Comiket C107 Tracker v0.5.1</p>
+                <p>All data is synced to Supabase</p>
+              </div>
+            </div>
+          ) : activeTab === "map" ? (
+            <div className={styles.emptyState}>
+              <div className={`${styles.emptyIcon} glass`}>
+                <MapPin size={48} className={styles.mutedIcon} />
+              </div>
+              <h2>Map View</h2>
+              <p>Circle location visualization coming soon...</p>
+            </div>
           ) : (
             /* New Feed Tab: Registered Artists & Scraped Inbox */
             <div className={styles.feedScrollArea}>
@@ -233,36 +380,41 @@ export default function Home() {
       </div>
 
       {/* Bottom Navigation */}
-      <nav className={`${styles.bottomNav} glass`}>
+      <nav className={styles.bottomNav}>
         <button
           className={activeTab === "feed" ? styles.active : ""}
           onClick={() => setActiveTab("feed")}
         >
-          <Compass size={24} />
+          <Compass size={22} />
           <span>Feed</span>
         </button>
         <button
           className={activeTab === "list" ? styles.active : ""}
           onClick={() => setActiveTab("list")}
         >
-          <ShoppingBag size={24} />
+          <ShoppingBag size={22} />
           <span>List</span>
         </button>
+
         <div className={styles.fabContainer}>
           <button className={styles.fab} onClick={() => { setEditingCircle(null); setIsModalOpen(true); }}>
             <Plus size={32} color="white" />
           </button>
         </div>
+
         <button
           className={activeTab === "map" ? styles.active : ""}
           onClick={() => setActiveTab("map")}
         >
-          <Grid size={24} />
+          <MapPin size={22} />
           <span>Map</span>
         </button>
-        <button>
-          <Settings size={24} />
-          <span>More</span>
+        <button
+          className={activeTab === "settings" ? styles.active : ""}
+          onClick={() => setActiveTab("settings")}
+        >
+          <Settings size={22} />
+          <span>Settings</span>
         </button>
       </nav>
       <AnimatePresence>
@@ -270,6 +422,7 @@ export default function Home() {
           <AddItemModal
             isOpen={isModalOpen}
             initialData={editingCircle}
+            globalSettings={appSettings}
             onClose={() => {
               setIsModalOpen(false);
               setEditingCircle(null);

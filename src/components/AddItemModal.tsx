@@ -1,72 +1,185 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Loader2, Plus, Trash2, Link as LinkIcon, Sparkles } from "lucide-react";
+import { X, Loader2, Plus, Trash2, Link as LinkIcon, Sparkles, Settings2, ChevronLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import styles from "./AddItemModal.module.css";
 import { supabase } from "@/lib/supabase";
-import { extractComiketData } from "@/lib/ai";
+import { performOCR } from "@/lib/ai";
+import ImageLightbox from "./ImageLightbox";
 
 interface AddItemModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
     initialData?: any;
+    globalSettings?: any;
 }
 
-export default function AddItemModal({ isOpen, onClose, onSuccess, initialData }: AddItemModalProps) {
+export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, globalSettings }: AddItemModalProps) {
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState<1 | 2>(1);
     const [xUrl, setXUrl] = useState("");
     const [priceListImage, setPriceListImage] = useState("");
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [lightboxSrc, setLightboxSrc] = useState("");
+
+    // AI & Settings State
+    const [aiModel, setAiModel] = useState<any>(globalSettings?.aiModel || "gpt-4o-mini");
+    const [ocrMethod, setOcrMethod] = useState<any>(globalSettings?.ocrMethod || "combined");
+    const [extractItems, setExtractItems] = useState(true); // Default true, user can toggle for speed
+    const [showSettings, setShowSettings] = useState(false);
 
     // Form State
     const [circleName, setCircleName] = useState("");
     const [artist, setArtist] = useState("");
     const [day, setDay] = useState("1");
     const [location, setLocation] = useState("");
-    const [items, setItems] = useState([{ id: Math.random().toString(), name: "", price: "", priority: "Medium", isWanted: false }]);
+    const [items, setItems] = useState([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: "", isWanted: false }]);
+    const [retryTimer, setRetryTimer] = useState<number | null>(null);
+    const [isInitialized, setIsInitialized] = useState(false);
+
+    // Cleanup initialized state when modal closes
+    useEffect(() => {
+        if (!isOpen) {
+            setIsInitialized(false);
+        }
+    }, [isOpen]);
 
     useEffect(() => {
+        if (retryTimer === null) return;
+        if (retryTimer <= 0) {
+            setRetryTimer(null);
+            return;
+        }
+        const timer = setTimeout(() => setRetryTimer(retryTimer - 1), 1000);
+        return () => clearTimeout(timer);
+    }, [retryTimer]);
+
+    // Draft Logic
+    useEffect(() => {
+        // Save draft on change (only if initialized)
+        if (!isOpen || !isInitialized) return;
+        const draftKey = initialData?.scraped_id
+            ? `draft_scraped_${initialData.scraped_id}`
+            : initialData?.id ? `draft_edit_${initialData.id}` : `draft_manual`;
+
+        const draftData = {
+            circleName, artist, day, location, items, xUrl, priceListImage
+        };
+        localStorage.setItem(draftKey, JSON.stringify(draftData));
+    }, [circleName, artist, day, location, items, xUrl, priceListImage, isOpen, initialData, isInitialized]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
         if (initialData) {
-            setCircleName(initialData.name || "");
-            setArtist(initialData.artist || "");
-            setDay(initialData.day || "1");
-            setLocation(`${initialData.area || ""}${initialData.block || ""}-${initialData.space_number || ""}`.replace(/^-|-$/, ""));
-            setPriceListImage(initialData.map_url || "");
-            setXUrl(initialData.x_url || "");
-            if (initialData.items && initialData.items.length > 0) {
-                setItems(initialData.items.map((it: any) => ({
-                    id: it.id || Math.random().toString(),
-                    name: it.name,
-                    price: it.price?.toString() || "0",
-                    priority: it.priority || "Medium",
-                    isWanted: it.is_wanted || false
-                })));
+            // Check for draft first for Scraped/Edit items
+            const draftKey = initialData.scraped_id
+                ? `draft_scraped_${initialData.scraped_id}`
+                : initialData.id ? `draft_edit_${initialData.id}` : null;
+
+            const savedDraft = draftKey ? localStorage.getItem(draftKey) : null;
+
+            if (savedDraft) {
+                try {
+                    const d = JSON.parse(savedDraft);
+                    setCircleName(d.circleName);
+                    setArtist(d.artist);
+                    setDay(d.day);
+                    setLocation(d.location);
+                    // Smart Merge: If draft has empty URL/Image but initialData has it, prefer initialData
+                    setPriceListImage(d.priceListImage || initialData.map_url || "");
+                    setXUrl(d.xUrl || initialData.x_url || "");
+                    setItems(d.items);
+                } catch (e) {
+                    console.error("Draft parse error", e);
+                }
+            } else {
+                // Determine initial values if no draft
+                setCircleName(initialData.name || "");
+                setArtist(initialData.artist || "");
+                setDay(initialData.day || "1");
+                setLocation(`${initialData.area || ""}${initialData.block || ""}-${initialData.space_number || ""}`.replace(/^-|-$/, ""));
+                setPriceListImage(initialData.map_url || "");
+                setXUrl(initialData.x_url || "");
+                if (initialData.items && initialData.items.length > 0) {
+                    setItems(initialData.items.map((it: any) => ({
+                        id: it.id || Math.random().toString(),
+                        name: it.name,
+                        price: it.price?.toString() || "0",
+                        quantity: it.quantity || 0,
+                        priority: it.priority || "Medium",
+                        buyer: it.buyer || globalSettings?.defaultBuyer || "",
+                        isWanted: it.is_wanted || false
+                    })));
+                } else {
+                    setItems([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: globalSettings?.defaultBuyer || "", isWanted: false }]);
+                }
             }
         } else {
-            // Reset for new entry
-            setCircleName("");
-            setArtist("");
-            setDay("1");
-            setLocation("");
-            setPriceListImage("");
-            setXUrl("");
-            setItems([{ id: Math.random().toString(), name: "", price: "", priority: "Medium", isWanted: false }]);
+            // New Entry - Check manual draft
+            const savedDraft = localStorage.getItem("draft_manual");
+            if (savedDraft) {
+                try {
+                    const d = JSON.parse(savedDraft);
+                    setCircleName(d.circleName);
+                    setArtist(d.artist);
+                    setDay(d.day);
+                    setLocation(d.location);
+                    setPriceListImage(d.priceListImage);
+                    setXUrl(d.xUrl);
+                    setItems(d.items);
+                } catch (e) {
+                    console.error("Draft parse error", e);
+                }
+            } else {
+                setCircleName("");
+                setArtist("");
+                setDay("1");
+                setLocation("");
+                setPriceListImage("");
+                setXUrl("");
+                setItems([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: globalSettings?.defaultBuyer || "", isWanted: false }]);
+            }
         }
+        setIsInitialized(true);
     }, [initialData, isOpen]);
 
     const handleFetch = async () => {
-        if (!xUrl) return;
+        if (!xUrl && !priceListImage) return;
         setLoading(true);
         try {
+            let contextText = initialData?.scrapedContent || xUrl;
+            const imageUrls = priceListImage ? [priceListImage] : (initialData?.image_urls || []);
+
+            // 1. Perform local OCR if requested
+            if (ocrMethod === "combined" && imageUrls.length > 0) {
+                const ocrResult = await performOCR(imageUrls[0]);
+                contextText += `\n\n[OCR Text from Image]:\n${ocrResult}`;
+            }
+
+            // 2. Call AI API
             const response = await fetch("/api/extract", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ postText: xUrl, imageUrls: [] }),
+                body: JSON.stringify({
+                    postText: contextText,
+                    imageUrls: ocrMethod === "vision" ? imageUrls : [],
+                    model: aiModel,
+                    includeItems: extractItems,
+                    authorName: artist // Pass manually entered artist to help AI
+                }),
             });
 
-            if (!response.ok) throw new Error("API Route failed");
+            if (!response.ok) {
+                const errorData = await response.json();
+                if (errorData.error === 'QUOTA_EXCEEDED') {
+                    setRetryTimer(errorData.retryAfter || 60);
+                    throw new Error(errorData.message);
+                }
+                throw new Error(errorData.error || "API Route failed");
+            }
 
             const data = await response.json();
 
@@ -78,18 +191,17 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData }
             const sn = data.circle?.space_number || "";
             setLocation(`${area}${block}-${sn}`.replace(/^-|-$/, ""));
 
-            // If the input was a URL, let's assume it's the price list image if it looks like one
-            if (xUrl.includes("photo/1") || xUrl.includes("pbs.twimg.com")) {
-                setPriceListImage(xUrl);
+            if (data.items && data.items.length > 0) {
+                setItems(data.items.map((it: any) => ({
+                    id: Math.random().toString(),
+                    name: it.name,
+                    price: it.price?.toString() || "0",
+                    quantity: 0,
+                    priority: it.priority || "Medium",
+                    buyer: globalSettings?.defaultBuyer || "",
+                    isWanted: false
+                })));
             }
-
-            setItems((data.items || []).map((it: any) => ({
-                id: Math.random().toString(),
-                name: it.name,
-                price: it.price?.toString() || "0",
-                priority: it.priority || "Medium",
-                isWanted: false
-            })));
         } catch (error) {
             console.error("Failed to fetch data:", error);
             alert("Failed to extract data. Please enter manually.");
@@ -99,7 +211,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData }
     };
 
     const addItem = () => {
-        setItems([...items, { id: Math.random().toString(), name: "", price: "", priority: "Medium", isWanted: false }]);
+        setItems([...items, { id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: globalSettings?.defaultBuyer || "", isWanted: false }]);
     };
 
     const removeItem = (index: number) => {
@@ -116,10 +228,6 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData }
         if (step === 1) {
             if (!artist) {
                 alert("Artist name is required.");
-                return;
-            }
-            if (!priceListImage && !xUrl.includes("http")) {
-                alert("Price list image or URL is required.");
                 return;
             }
             setStep(2);
@@ -173,8 +281,6 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData }
             }
 
             // 2. Upsert Items
-            // If editing, we might want to delete old items or update them.
-            // For simplicity, let's delete items for this circle and re-insert if editing.
             if (initialData?.id) {
                 await supabase.from("items").delete().eq("circle_id", initialData.id);
             }
@@ -185,17 +291,20 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData }
                     circle_id: circleId,
                     name: it.name,
                     price: parseInt(it.price) || 0,
+                    quantity: it.quantity || 0,
                     priority: it.priority || "Medium",
+                    buyer: it.buyer || "",
                     is_wanted: it.isWanted || false,
                 }));
 
-            // Final fallback if empty
             if (itemsToInsert.length === 0) {
                 itemsToInsert.push({
                     circle_id: circleId,
                     name: "新刊/グッズ",
                     price: 0,
+                    quantity: 1,
                     priority: "Medium",
+                    buyer: "",
                     is_wanted: false
                 });
             }
@@ -205,6 +314,13 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData }
                 .insert(itemsToInsert);
 
             if (itemsError) throw itemsError;
+
+            if (initialData?.scraped_id) {
+                await supabase
+                    .from("scraped_posts")
+                    .update({ is_read: true })
+                    .eq("id", initialData.scraped_id);
+            }
 
             onSuccess();
             onClose();
@@ -226,13 +342,6 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData }
                 exit={{ opacity: 0, y: 20, scale: 0.95 }}
                 className={`${styles.modal} glass`}
             >
-                <style jsx>{`
-                    .divider {
-                        border: 0;
-                        border-top: 1px solid var(--glass-border);
-                        margin: 0;
-                    }
-                `}</style>
                 <div className={styles.header}>
                     <h2>{step === 1 ? "Add Artist Info" : "Select Items to Buy"}</h2>
                     <button className={styles.closeBtn} onClick={onClose}>
@@ -240,152 +349,229 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData }
                     </button>
                 </div>
 
-                {step === 1 ? (
-                    <>
-                        {/* AI Fetch Section */}
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Paste X URL or Post Text</label>
-                            <div className={styles.fetchSection}>
-                                <input
-                                    type="text"
-                                    className={`${styles.input} ${styles.fetchInput}`}
-                                    placeholder="https://x.com/..."
-                                    value={xUrl}
-                                    onChange={(e) => setXUrl(e.target.value)}
-                                />
-                                <button
-                                    className={styles.secondaryBtn}
-                                    onClick={handleFetch}
-                                    disabled={loading || !xUrl}
-                                >
-                                    {loading ? <Loader2 className={styles.spinner} size={18} /> : <Sparkles size={18} />}
-                                </button>
-                            </div>
-                            <p className={styles.hint}>Tip: Use the Chrome Extension to auto-fill!</p>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Price List Image URL <span className={styles.required}>*</span></label>
-                            <input
-                                type="text"
-                                className={styles.input}
-                                placeholder="https://pbs.twimg.com/media/..."
-                                value={priceListImage}
-                                onChange={(e) => setPriceListImage(e.target.value)}
-                            />
-                        </div>
-
-                        {priceListImage && (
-                            <div className={styles.imagePreviewContainer}>
-                                <img src={priceListImage} alt="Price List" className={styles.priceListImage} />
-                            </div>
-                        )}
-
-                        <div className={styles.formRow}>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Artist <span className={styles.required}>*</span></label>
-                                <input
-                                    type="text"
-                                    className={styles.input}
-                                    value={artist}
-                                    onChange={(e) => setArtist(e.target.value)}
-                                    placeholder="Required"
-                                />
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Circle Name</label>
-                                <input
-                                    type="text"
-                                    className={styles.input}
-                                    value={circleName}
-                                    onChange={(e) => setCircleName(e.target.value)}
-                                    placeholder="Optional"
-                                />
-                            </div>
-                        </div>
-
-                        <div className={styles.formRow}>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Day</label>
-                                <select className={styles.input} value={day} onChange={(e) => setDay(e.target.value)}>
-                                    <option value="1">Day 1</option>
-                                    <option value="2">Day 2</option>
-                                </select>
-                            </div>
-                            <div className={styles.formGroup}>
-                                <label className={styles.label}>Location</label>
-                                <input
-                                    type="text"
-                                    className={styles.input}
-                                    value={location}
-                                    onChange={(e) => setLocation(e.target.value)}
-                                    placeholder="e.g. 東A-12b"
-                                />
-                            </div>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Catalog (Item List)</label>
-                            <div className={styles.itemsList}>
-                                {items.map((item, index) => (
-                                    <div key={item.id} className={styles.itemEntry}>
-                                        <input
-                                            type="text"
-                                            className={styles.input}
-                                            placeholder="Item Name"
-                                            value={item.name}
-                                            onChange={(e) => handleItemChange(index, "name", e.target.value)}
-                                        />
-                                        <input
-                                            type="number"
-                                            className={styles.input}
-                                            placeholder="¥"
-                                            value={item.price}
-                                            onChange={(e) => handleItemChange(index, "price", e.target.value)}
-                                            style={{ width: '80px' }}
-                                        />
-                                        <button className={styles.removeBtn} onClick={() => removeItem(index)}>
-                                            <Trash2 size={18} />
-                                        </button>
+                <div className={styles.content}>
+                    {step === 1 ? (
+                        <div className={styles.formSection}>
+                            <div className={styles.inputGroup}>
+                                <label>X (Twitter) URL / Post Content</label>
+                                <div className={styles.aiInputWrapper}>
+                                    <input
+                                        type="text"
+                                        value={xUrl}
+                                        onChange={(e) => setXUrl(e.target.value)}
+                                        placeholder="Paste X post URL or text..."
+                                        className="glass"
+                                    />
+                                    <button
+                                        className={`${styles.aiBtn} ${loading ? styles.spinning : ""}`}
+                                        onClick={handleFetch}
+                                        disabled={loading || (!xUrl && !priceListImage)}
+                                    >
+                                        {loading ? <Loader2 size={18} /> : <Sparkles size={18} />}
+                                    </button>
+                                </div>
+                                {retryTimer !== null && (
+                                    <div className={styles.retryBadge}>
+                                        <Loader2 size={12} className={styles.spinning} />
+                                        <span>Quota exceeded. Please retry in {retryTimer}s</span>
                                     </div>
-                                ))}
+                                )}
+                                <div className={styles.apiSettingsToggle}>
+                                    <button onClick={() => setShowSettings(!showSettings)} className={styles.settingsLink}>
+                                        <Settings2 size={14} />
+                                        {showSettings ? "Hide AI Settings" : "AI Extraction Settings"}
+                                    </button>
+                                </div>
+
+                                <AnimatePresence>
+                                    {showSettings && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: "auto", opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            className={styles.settingsPanel}
+                                        >
+                                            <div className={styles.settingField}>
+                                                <label>AI Model</label>
+                                                <select value={aiModel} onChange={(e: any) => setAiModel(e.target.value)} className="glass">
+                                                    <option value="gpt-4o-mini">GPT-4o mini</option>
+                                                    <option value="gemini-3-flash-preview">Gemini 3 Flash Preview</option>
+                                                </select>
+                                            </div>
+                                            <div className={styles.settingField}>
+                                                <label>Extraction Method</label>
+                                                <select value={ocrMethod} onChange={(e: any) => setOcrMethod(e.target.value)} className="glass">
+                                                    <option value="combined">OCR Text + AI (Reliable)</option>
+                                                    <option value="vision">Vision Direct (Smart)</option>
+                                                </select>
+                                            </div>
+                                            <div className={styles.settingField}>
+                                                <label>Extract Items (Menu)</label>
+                                                <div className={styles.toggleWrapper}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={extractItems}
+                                                        onChange={(e) => setExtractItems(e.target.checked)}
+                                                        id="extractItemsToggle"
+                                                    />
+                                                    <label htmlFor="extractItemsToggle">Enable (Slower but detailed)</label>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
-                            <button className={styles.addItemBtn} onClick={addItem}>
-                                <Plus size={16} /> Add Catalog Item
-                            </button>
-                        </div>
-                    </>
-                ) : (
-                    <div className={styles.selectionMode}>
-                        <p className={styles.selectionHint}>Check items you want to buy:</p>
-                        <div className={styles.purchaseList}>
-                            {items.filter(it => it.name.trim()).map((item, index) => (
-                                <div key={item.id} className={styles.purchaseEntry} onClick={() => handleItemChange(items.indexOf(item), "isWanted", !item.isWanted)}>
-                                    <div className={`${styles.checkControl} ${item.isWanted ? styles.checked : ""}`}>
-                                        {item.isWanted && <Sparkles size={14} />}
+
+                            <div className={styles.grid2}>
+                                <div className={styles.inputGroup}>
+                                    <label>Artist Name *</label>
+                                    <input type="text" value={artist} onChange={(e) => setArtist(e.target.value)} className="glass" />
+                                </div>
+                                <div className={styles.inputGroup}>
+                                    <label>Circle Name</label>
+                                    <input type="text" value={circleName} onChange={(e) => setCircleName(e.target.value)} className="glass" />
+                                </div>
+                            </div>
+
+                            <div className={styles.grid2}>
+                                <div className={styles.inputGroup}>
+                                    <label>Day (C107)</label>
+                                    <select value={day} onChange={(e) => setDay(e.target.value)} className="glass">
+                                        <option value="1">1日目 - 12/30（火）</option>
+                                        <option value="2">2日目 - 12/31（水）</option>
+                                    </select>
+                                </div>
+                                <div className={styles.inputGroup}>
+                                    <label>Location (e.g., 東ア-74a)</label>
+                                    <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="glass" />
+                                </div>
+                            </div>
+
+                            <div className={styles.inputGroup}>
+                                <label>Price List Image URL (Direct link)</label>
+                                <div className={styles.imageInputWrapper}>
+                                    <input
+                                        type="text"
+                                        value={priceListImage}
+                                        onChange={(e) => setPriceListImage(e.target.value)}
+                                        placeholder="https://..."
+                                        className="glass"
+                                    />
+                                    <LinkIcon size={16} className={styles.inputIcon} />
+                                </div>
+                                {priceListImage && (
+                                    <div className={styles.imagePreview} onClick={() => { setLightboxSrc(priceListImage); setLightboxOpen(true); }}>
+                                        <img src={priceListImage} alt="Price List Preview" onError={(e) => (e.currentTarget.style.display = 'none')} />
                                     </div>
-                                    <div className={styles.purchaseDetails}>
-                                        <span className={styles.purchaseName}>{item.name}</span>
-                                        <span className={styles.purchasePrice}>¥{item.price}</span>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className={styles.itemsSection}>
+                            {/* Fixed Header with Price List Preview if available */}
+                            {priceListImage && (
+                                <div className={styles.fixedPreview} onClick={() => { setLightboxSrc(priceListImage); setLightboxOpen(true); }}>
+                                    <div className={styles.fixedPreviewInner}>
+                                        <img src={priceListImage} alt="Reference" />
+                                        <span className={styles.previewHint}>Tap to Zoom</span>
                                     </div>
                                 </div>
-                            ))}
+                            )}
+
+                            <div className={styles.itemsHeader}>
+                                <h3>Items to Purchase</h3>
+                                <button className={styles.addItemBtn} onClick={addItem}>
+                                    <Plus size={16} /> Add
+                                </button>
+                            </div>
+
+                            <div className={styles.itemsScrollContainer}>
+                                <div className={styles.itemsList}>
+                                    {items.map((item, index) => (
+                                        <div key={item.id} className={`${styles.itemRow} glass`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={item.isWanted}
+                                                onChange={(e) => handleItemChange(index, "isWanted", e.target.checked)}
+                                                className={styles.itemCheck}
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Item Name"
+                                                value={item.name}
+                                                onChange={(e) => handleItemChange(index, "name", e.target.value)}
+                                                className={styles.itemNameInput}
+                                            />
+                                            <input
+                                                type="number"
+                                                placeholder="¥"
+                                                value={item.price}
+                                                onChange={(e) => handleItemChange(index, "price", e.target.value)}
+                                                className={styles.itemPriceInput}
+                                            />
+                                            <div className={styles.qtyWrapper}>
+                                                <input
+                                                    type="number"
+                                                    placeholder="Qty"
+                                                    min="0"
+                                                    value={item.quantity || 0}
+                                                    onChange={(e) => handleItemChange(index, "quantity", parseInt(e.target.value))}
+                                                    className={styles.itemQtyInput}
+                                                />
+                                            </div>
+                                            <div className={styles.priorityWrapper}>
+                                                <select
+                                                    value={item.priority}
+                                                    onChange={(e) => handleItemChange(index, "priority", e.target.value)}
+                                                    className={styles.itemPrioritySelect}
+                                                >
+                                                    <option value="High">高</option>
+                                                    <option value="Medium">中</option>
+                                                    <option value="Low">低</option>
+                                                </select>
+                                            </div>
+                                            <div className={styles.assignWrapper}>
+                                                <select
+                                                    value={item.buyer}
+                                                    onChange={(e) => handleItemChange(index, "buyer", e.target.value)}
+                                                    className={styles.itemBuyerSelect}
+                                                >
+                                                    <option value="">Assign...</option>
+                                                    {globalSettings?.buyerList?.map((b: string) => (
+                                                        <option key={b} value={b}>{b}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <button className={styles.removeBtn} onClick={() => removeItem(index)}>
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
-                        <button className={styles.backBtn} onClick={() => setStep(1)}>
-                            Back to Artist Info
-                        </button>
-                    </div>
-                )}
+                    )}
+                </div>
 
                 <div className={styles.footer}>
-                    <button
-                        className={styles.primaryBtn}
-                        onClick={handleSubmit}
-                        disabled={loading || (step === 1 && !artist)}
-                    >
-                        {loading ? "Processing..." : step === 1 ? "Next: Purchase Info" : "Save to My List"}
+                    {step === 2 && (
+                        <button className={styles.backBtn} onClick={() => setStep(1)} disabled={loading}>
+                            <ChevronLeft size={16} /> Artist Info
+                        </button>
+                    )}
+                    <button className={styles.cancelBtn} onClick={onClose} disabled={loading}>
+                        Cancel
+                    </button>
+                    <button className={styles.submitBtn} onClick={handleSubmit} disabled={loading}>
+                        {loading ? <Loader2 className={styles.spinning} /> : step === 1 ? "Next: Set Items" : "Save Artist"}
                     </button>
                 </div>
+
+                <ImageLightbox
+                    isOpen={lightboxOpen}
+                    imageUrl={lightboxSrc}
+                    onClose={() => setLightboxOpen(false)}
+                />
             </motion.div>
         </div>
     );

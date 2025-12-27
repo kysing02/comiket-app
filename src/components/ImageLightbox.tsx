@@ -131,9 +131,7 @@ export default function ImageLightbox({ isOpen, imageUrl, onClose }: ImageLightb
                             exit={{ scale: 0.8, opacity: 0 }}
                             style={{
                                 x,
-                                y,
-                                width: "100%",
-                                height: "auto"
+                                y
                             }}
                             drag
                             dragConstraints={constraints}
