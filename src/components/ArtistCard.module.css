@@ -1,40 +1,51 @@
 .card {
-    margin-bottom: 1.5rem;
-    overflow: hidden;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
-    width: 100%;
-    max-width: 380px;
-    margin-left: auto;
-    margin-right: auto;
+    gap: 0.75rem;
+    position: relative;
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .header {
-    padding: 1rem;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    background: rgba(255, 255, 255, 0.03);
+}
+
+.artistInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.artistLink {
+    text-decoration: none;
+    color: inherit;
 }
 
 .artistName {
     font-size: 1.1rem;
     font-weight: 700;
-    color: var(--primary);
+    color: white;
     margin: 0;
 }
 
-.artistLink {
-    text-decoration: none;
-    transition: opacity 0.2s;
-}
-
-.artistLink:hover {
-    opacity: 0.7;
+.artistLink:hover .artistName {
+    text-decoration: underline;
+    color: var(--primary);
 }
 
 .circleName {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: var(--muted);
     margin: 0;
 }
@@ -42,118 +53,171 @@
 .locationBadge {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.8rem;
-    background: var(--glass-border);
-    border-radius: 20px;
+    gap: 0.3rem;
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 700;
+    color: var(--primary);
+    background: rgba(99, 102, 241, 0.15);
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    white-space: nowrap;
 }
 
 .content {
-    height: auto;
-    min-height: 200px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
     overflow: hidden;
     position: relative;
-    background: rgba(0, 0, 0, 0.2);
+    transition: height 0.3s ease;
 }
 
+/* Image View */
 .imageWrapper {
     width: 100%;
+    /* Min height to prevent layout shift is handled inline */
+    cursor: pointer;
     position: relative;
-    background: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: zoom-in;
 }
 
 .priceListImage {
     width: 100%;
     height: auto;
     display: block;
+    transition: transform 0.3s;
+}
+
+.imageWrapper:hover .priceListImage {
+    transform: scale(1.02);
 }
 
 .placeholder {
-    height: 200px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    padding: 3rem;
     color: var(--muted);
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.02);
 }
 
+/* List View */
 .itemsList {
-    padding: 1rem;
-    width: 100%;
+    padding: 0.5rem;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0;
 }
 
 .itemRow {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 0;
+    padding: 0.6rem 0.8rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.itemRow:last-child {
+    border-bottom: none;
 }
 
 .itemName {
     font-size: 0.9rem;
+    color: var(--foreground);
     flex: 1;
 }
 
 .itemPrice {
-    font-weight: 700;
+    font-size: 0.9rem;
+    font-weight: 600;
     color: var(--secondary);
     margin-left: 1rem;
 }
 
 .wantedBadge {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.4rem;
+    font-size: 0.6rem;
     background: var(--primary);
     color: white;
+    padding: 0.1rem 0.3rem;
     border-radius: 4px;
     margin-left: 0.5rem;
+    text-transform: uppercase;
+    font-weight: 700;
 }
 
+/* Footer */
 .footer {
-    padding: 0.75rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(255, 255, 255, 0.03);
+    gap: 1rem;
+    margin-top: 0.5rem;
 }
 
 .viewToggle {
     display: flex;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 2px;
+    gap: 0.2rem;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.2rem;
     border-radius: 8px;
 }
 
 .toggleBtn {
-    padding: 0.4rem 0.6rem;
+    padding: 0.4rem;
     border-radius: 6px;
+    border: none;
+    background: transparent;
     color: var(--muted);
+    cursor: pointer;
     transition: all 0.2s;
 }
 
 .toggleBtn.active {
-    background: var(--primary);
-    color: white;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--foreground);
+}
+
+.actions {
+    display: flex;
+    flex: 1;
+    gap: 0.5rem;
 }
 
 .editBtn {
+    flex: 1;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: var(--primary-gradient);
+    padding: 0.6rem 1rem;
     border-radius: 8px;
+    border: none;
+    background: var(--primary);
     color: white;
     font-weight: 600;
-    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.editBtn:hover {
+    background: var(--primary-dark, #4f46e5);
+}
+
+.deleteBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.6rem;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.deleteBtn:hover {
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.1);
+    border-color: var(--danger);
 }

@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { MapPin, Image as ImageIcon, List as ListIcon, Edit2, ShoppingCart } from "lucide-react";
+import { MapPin, Image as ImageIcon, List as ListIcon, Edit2, ShoppingCart, Trash2 } from "lucide-react";
 import styles from "./ArtistCard.module.css";
 import ImageLightbox from "./ImageLightbox";
 
 interface ArtistCardProps {
     circle: any;
     onEdit: () => void;
+    onDelete: (id: string) => void;
 }
 
-export default function ArtistCard({ circle, onEdit }: ArtistCardProps) {
+export default function ArtistCard({ circle, onEdit, onDelete }: ArtistCardProps) {
     const [view, setView] = useState<"image" | "list">("image");
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
     const [contentHeight, setContentHeight] = useState<number | undefined>(undefined);
@@ -90,6 +91,9 @@ export default function ArtistCard({ circle, onEdit }: ArtistCardProps) {
                     <button className={styles.editBtn} onClick={onEdit}>
                         <Edit2 size={16} />
                         <span>Edit / Buy</span>
+                    </button>
+                    <button className={styles.deleteBtn} onClick={() => onDelete(circle.id)}>
+                        <Trash2 size={16} />
                     </button>
                 </div>
             </div>

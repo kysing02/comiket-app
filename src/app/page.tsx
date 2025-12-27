@@ -93,7 +93,6 @@ export default function Home() {
       *,
       circles (*)
       `)
-        .eq("is_wanted", true)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -180,6 +179,15 @@ export default function Home() {
       scraped_id: post.id
     });
     setIsModalOpen(true);
+  };
+
+  const handleDeleteCircle = async (id: string) => {
+    if (!confirm("Delete this circle and all its items?")) return;
+    const { error } = await supabase.from("circles").delete().eq("id", id);
+    if (!error) {
+      fetchCircles();
+      fetchItems(); // Refresh items as they cascade delete
+    }
   };
 
   return (
@@ -362,6 +370,7 @@ export default function Home() {
                         setEditingCircle(circle);
                         setIsModalOpen(true);
                       }}
+                      onDelete={handleDeleteCircle}
                     />
                   ))
                 ) : (

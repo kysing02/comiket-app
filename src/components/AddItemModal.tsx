@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Loader2, Plus, Trash2, Link as LinkIcon, Sparkles, Settings2, ChevronLeft } from "lucide-react";
+import { X, Loader2, Plus, Trash2, Link as LinkIcon, Sparkles, Settings2, ChevronLeft, Image as ImageIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import styles from "./AddItemModal.module.css";
 import { supabase } from "@/lib/supabase";
@@ -20,7 +20,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState<1 | 2>(1);
     const [xUrl, setXUrl] = useState("");
-    const [priceListImage, setPriceListImage] = useState("");
+    const [priceListImages, setPriceListImages] = useState<string[]>([""]);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxSrc, setLightboxSrc] = useState("");
 
@@ -65,10 +65,10 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
             : initialData?.id ? `draft_edit_${initialData.id}` : `draft_manual`;
 
         const draftData = {
-            circleName, artist, day, location, items, xUrl, priceListImage
+            circleName, artist, day, location, items, xUrl, priceListImages
         };
         localStorage.setItem(draftKey, JSON.stringify(draftData));
-    }, [circleName, artist, day, location, items, xUrl, priceListImage, isOpen, initialData, isInitialized]);
+    }, [circleName, artist, day, location, items, xUrl, priceListImages, isOpen, initialData, isInitialized]);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -89,7 +89,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                     setDay(d.day);
                     setLocation(d.location);
                     // Smart Merge: If draft has empty URL/Image but initialData has it, prefer initialData
-                    setPriceListImage(d.priceListImage || initialData.map_url || "");
+                    setPriceListImages(d.priceListImages && d.priceListImages.length > 0 ? d.priceListImages : [initialData.map_url || ""]);
                     setXUrl(d.xUrl || initialData.x_url || "");
                     setItems(d.items);
                 } catch (e) {
@@ -101,7 +101,8 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                 setArtist(initialData.artist || "");
                 setDay(initialData.day || "1");
                 setLocation(`${initialData.area || ""}${initialData.block || ""}-${initialData.space_number || ""}`.replace(/^-|-$/, ""));
-                setPriceListImage(initialData.map_url || "");
+                setLocation(`${initialData.area || ""}${initialData.block || ""}-${initialData.space_number || ""}`.replace(/^-|-$/, ""));
+                setPriceListImages([initialData.map_url || ""]);
                 setXUrl(initialData.x_url || "");
                 if (initialData.items && initialData.items.length > 0) {
                     setItems(initialData.items.map((it: any) => ({
@@ -127,7 +128,9 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                     setArtist(d.artist);
                     setDay(d.day);
                     setLocation(d.location);
-                    setPriceListImage(d.priceListImage);
+                    setDay(d.day);
+                    setLocation(d.location);
+                    setPriceListImages(d.priceListImages || [""]);
                     setXUrl(d.xUrl);
                     setItems(d.items);
                 } catch (e) {
@@ -138,7 +141,9 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                 setArtist("");
                 setDay("1");
                 setLocation("");
-                setPriceListImage("");
+                setDay("1");
+                setLocation("");
+                setPriceListImages([""]);
                 setXUrl("");
                 setItems([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: globalSettings?.defaultBuyer || "", isWanted: false }]);
             }
@@ -147,11 +152,13 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
     }, [initialData, isOpen]);
 
     const handleFetch = async () => {
-        if (!xUrl && !priceListImage) return;
+        const validImages = priceListImages.filter(img => img.trim() !== "");
+        if (!xUrl && validImages.length === 0) return;
         setLoading(true);
         try {
             let contextText = initialData?.scrapedContent || xUrl;
-            const imageUrls = priceListImage ? [priceListImage] : (initialData?.image_urls || []);
+            // Use active input images OR fallback to initial data images
+            const imageUrls = validImages.length > 0 ? validImages : (initialData?.image_urls || []);
 
             // 1. Perform local OCR if requested
             if (ocrMethod === "combined" && imageUrls.length > 0) {
@@ -254,7 +261,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                         area,
                         block,
                         space_number,
-                        map_url: priceListImage,
+                        map_url: priceListImages[0] || "",
                         x_url: xUrl
                     })
                     .eq("id", circleId);
@@ -270,7 +277,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                         area,
                         block,
                         space_number,
-                        map_url: priceListImage,
+                        map_url: priceListImages[0] || "",
                         x_url: xUrl
                     })
                     .select()
@@ -365,7 +372,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                                     <button
                                         className={`${styles.aiBtn} ${loading ? styles.spinning : ""}`}
                                         onClick={handleFetch}
-                                        disabled={loading || (!xUrl && !priceListImage)}
+                                        disabled={loading || (!xUrl && !priceListImages[0])}
                                     >
                                         {loading ? <Loader2 size={18} /> : <Sparkles size={18} />}
                                     </button>
@@ -448,32 +455,54 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                             </div>
 
                             <div className={styles.inputGroup}>
-                                <label>Price List Image URL (Direct link)</label>
-                                <div className={styles.imageInputWrapper}>
-                                    <input
-                                        type="text"
-                                        value={priceListImage}
-                                        onChange={(e) => setPriceListImage(e.target.value)}
-                                        placeholder="https://..."
-                                        className="glass"
-                                    />
-                                    <LinkIcon size={16} className={styles.inputIcon} />
+                                <div className={styles.labelRow}>
+                                    <label>Price List Images</label>
+                                    <button className={styles.addImgBtn} onClick={() => setPriceListImages([...priceListImages, ""])}>
+                                        <Plus size={14} /> Add Image
+                                    </button>
                                 </div>
-                                {priceListImage && (
-                                    <div className={styles.imagePreview} onClick={() => { setLightboxSrc(priceListImage); setLightboxOpen(true); }}>
-                                        <img src={priceListImage} alt="Price List Preview" onError={(e) => (e.currentTarget.style.display = 'none')} />
+
+                                {priceListImages.map((imgUrl, idx) => (
+                                    <div key={idx} className={styles.imageInputRow}>
+                                        <div className={styles.imageInputWrapper}>
+                                            <input
+                                                type="text"
+                                                value={imgUrl}
+                                                onChange={(e) => {
+                                                    const newImages = [...priceListImages];
+                                                    newImages[idx] = e.target.value;
+                                                    setPriceListImages(newImages);
+                                                }}
+                                                placeholder={`Image URL ${idx + 1}`}
+                                                className="glass"
+                                            />
+                                            {imgUrl && (
+                                                <button className={styles.previewBtn} onClick={() => { setLightboxSrc(imgUrl); setLightboxOpen(true); }}>
+                                                    <ImageIcon size={16} />
+                                                </button>
+                                            )}
+                                        </div>
+                                        {priceListImages.length > 1 && (
+                                            <button
+                                                className={styles.removeImgBtn}
+                                                onClick={() => setPriceListImages(priceListImages.filter((_, i) => i !== idx))}
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        )}
                                     </div>
-                                )}
+                                ))}
                             </div>
                         </div>
                     ) : (
                         <div className={styles.itemsSection}>
                             {/* Fixed Header with Price List Preview if available */}
-                            {priceListImage && (
-                                <div className={styles.fixedPreview} onClick={() => { setLightboxSrc(priceListImage); setLightboxOpen(true); }}>
+                            {/* Fixed Header with Price List Preview if available */}
+                            {priceListImages.length > 0 && priceListImages[0] && (
+                                <div className={styles.fixedPreview} onClick={() => { setLightboxSrc(priceListImages[0]); setLightboxOpen(true); }}>
                                     <div className={styles.fixedPreviewInner}>
-                                        <img src={priceListImage} alt="Reference" />
-                                        <span className={styles.previewHint}>Tap to Zoom</span>
+                                        <img src={priceListImages[0]} alt="Reference" />
+                                        <span className={styles.previewHint}>Tap to Zoom ({priceListImages.length})</span>
                                     </div>
                                 </div>
                             )}

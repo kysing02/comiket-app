@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, User, MapPin, Image as ImageIcon, Filter } from "lucide-react";
+import { Check, User, MapPin, Image as ImageIcon, Filter, Trash2 } from "lucide-react";
 import styles from "./ShoppingList.module.css";
 import { supabase } from "@/lib/supabase";
 import ImageLightbox from "./ImageLightbox";
@@ -98,11 +98,22 @@ export default function ShoppingList({ items, onUpdate }: ShoppingListProps) {
     const totalCount = filteredItems.length;
     const purchasedCount = filteredItems.filter(it => it.is_purchased).length;
 
+
     const openLightbox = (image: string) => {
         if (!image) return;
         setLightboxSrc(image);
         setLightboxOpen(true);
     }
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("Delete this item?")) return;
+        const { error } = await supabase.from("items").delete().eq("id", id);
+        if (error) {
+            console.error("Failed to delete item", error);
+        } else {
+            onUpdate();
+        }
+    };
 
     const SortIcon = ({ column }: { column: string }) => {
         if (sortConfig?.key !== column) return <span className={styles.sortPlaceholder} />;
@@ -215,15 +226,18 @@ export default function ShoppingList({ items, onUpdate }: ShoppingListProps) {
                                 )}
                             </div>
 
-                            {/* 5. Image Action */}
+                            {/* 5. Image & Delete Action */}
                             <div className={styles.colAction}>
                                 {item.image_url ? (
                                     <button className={styles.imgBtn} onClick={() => openLightbox(item.image_url)}>
                                         <ImageIcon size={18} />
                                     </button>
                                 ) : (
-                                    <span className={styles.noImg}>-</span>
+                                    <span className={styles.noImg}></span>
                                 )}
+                                <button className={styles.deleteBtn} onClick={() => handleDelete(item.id)}>
+                                    <Trash2 size={16} />
+                                </button>
                             </div>
                         </div>
                     ))}

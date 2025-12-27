@@ -344,10 +344,12 @@
 
 /* 5. Action */
 .colAction {
-    width: 50px;
-    /* Widened */
+    width: 70px;
+    /* Widened for 2 buttons */
     display: flex;
     justify-content: center;
+    align-items: center;
+    gap: 0.2rem;
     flex-shrink: 0;
 }
 
@@ -356,7 +358,7 @@
     border: none;
     color: var(--primary);
     cursor: pointer;
-    padding: 0.5rem;
+    padding: 0.4rem;
     border-radius: 8px;
     display: flex;
     transition: background 0.2s;
@@ -366,9 +368,25 @@
     background: rgba(99, 102, 241, 0.2);
 }
 
+.deleteBtn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0.4rem;
+    border-radius: 8px;
+    display: flex;
+    transition: all 0.2s;
+}
+
+.deleteBtn:hover {
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.1);
+}
+
 .noImg {
-    color: rgba(255, 255, 255, 0.1);
-    font-size: 0.8rem;
+    width: 28px;
+    /* Placeholder spacer */
 }
 
 
