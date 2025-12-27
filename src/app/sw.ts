@@ -16,7 +16,7 @@ const serwist = new Serwist({
         {
             // Cache Supabase API calls
             matcher: ({ url }: { url: URL }) => url.hostname.includes("supabase.co"),
-            handler: "NetworkFirst",
+            handler: "StaleWhileRevalidate",
             options: {
                 cacheName: "supabase-api-cache",
                 expiration: {

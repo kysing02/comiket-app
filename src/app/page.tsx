@@ -11,7 +11,9 @@ import {
   Settings,
   Filter,
   MapPin,
-  Trash2
+  Trash2,
+  WifiOff,
+  Download
 } from "lucide-react";
 import ShoppingList from "@/components/ShoppingList";
 import ArtistCard from "@/components/ArtistCard";
@@ -40,6 +42,8 @@ export default function Home() {
     buyerList: ["Me", "Friend A", "Friend B"]
   });
   const [feedSearch, setFeedSearch] = useState("");
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isOffline, setIsOffline] = useState(false);
 
   /* Load Settings from LocalStorage */
   useEffect(() => {
@@ -57,6 +61,39 @@ export default function Home() {
       }
     }
   }, []);
+
+  /* PWA/Offline Logic */
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const handleOffline = () => setIsOffline(true);
+    const handleOnline = () => setIsOffline(false);
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+
+    // Check initial state
+    if (!navigator.onLine) setIsOffline(true);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") {
+      setDeferredPrompt(null);
+    }
+  };
 
   /* Save Settings */
   const updateSetting = (key: string, value: any) => {
@@ -200,6 +237,17 @@ export default function Home() {
         <div className={styles.headerContent}>
           <h1>C107 <span className={styles.textGradient}>Tracker</span></h1>
           <div className={styles.headerActions}>
+            {isOffline && (
+              <div className={styles.offlineBadge} title="Offline Mode">
+                <WifiOff size={16} />
+                <span>Offline</span>
+              </div>
+            )}
+            {deferredPrompt && (
+              <button className={`${styles.iconBtn} ${styles.installBtn}`} onClick={handleInstallClick}>
+                <Download size={20} />
+              </button>
+            )}
             <button className={styles.iconBtn} onClick={() => setActiveTab("settings")}>
               <Settings size={20} />
             </button>

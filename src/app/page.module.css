@@ -54,6 +54,30 @@
   background: var(--glass-border);
 }
 
+.offlineBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.installBtn {
+  background: var(--primary-glow);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.installBtn:hover {
+  background: var(--primary);
+  color: white;
+}
+
 .contentScroll {
   flex: 1;
   overflow-y: auto;
