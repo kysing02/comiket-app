@@ -10,29 +10,20 @@ export async function POST(req: Request) {
         }
 
         const prompt = `
-      コミケ（C107）のサークル情報とお品書き情報を以下のテキストから抽出してください。
+      Extract Comiket info from the following text.
       
-      【重要】
-      - 場所（area/block/space）は日本語形式で出力してください（例: 東, ア, 74a）。
-      - サークル名（circle name）と執筆者・絵師名（artist name）を混同しないように注意してください。
-      - アイテム名と価格を正確に抽出してください。
-      - URLのみが入力された場合、URLから推測できる情報（ユーザー名など）を返し、不明な項目は空文字にしてください。
+      【RULES】
+      - Primary Key: Artist (@handle or name). Required.
+      - Circle Name: Optional.
+      - Location: Japanese (e.g. 東, ア, 74a).
+      - Items: Extract ALL as a list with name and price.
       
       Input: ${postText}
       
-      Return ONLY a valid JSON object in this format:
+      Return JSON:
       {
-        "circle": {
-          "name": "サークル名",
-          "artist": "作者名・絵師名",
-          "day": "1" | "2",
-          "area": "東" | "西",
-          "block": "A-Z",
-          "space": "01a-99b"
-        },
-        "items": [
-          { "name": "商品名", "price": 1000 }
-        ]
+        "circle": { "name": "...", "artist": "...", "day": "1|2", "area": "東|西", "block": "...", "space_number": "..." },
+        "items": [ { "name": "...", "price": 0, "priority": "Medium" } ]
       }
     `;
 

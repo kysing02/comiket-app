@@ -1,0 +1,38 @@
+// manifest.json
+{
+  "manifest_version": 3,
+  "name": "Comiket Helper Scraper",
+  "version": "1.0",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["https://x.com/*", "https://*.supabase.co/*"],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://x.com/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
+
+// content.js
+function scrapeTweets() {
+  const tweets = document.querySelectorAll('article[data-testid="tweet"]');
+  const results = [];
+  
+  tweets.forEach(tweet => {
+    const text = tweet.querySelector('div[data-testid="tweetText"]')?.innerText;
+    const images = Array.from(tweet.querySelectorAll('img[src*="pbs.twimg.com/media"]')).map(img => img.src);
+    const url = tweet.querySelector('a[href*="/status/"]')?.href;
+    const postId = url?.split('/').pop();
+    
+    if (text && url) {
+      results.push({ post_id: postId, url, content: text, image_urls: images });
+    }
+  });
+  
+  return results;
+}
+
+// To use this, you would add a listener to send this data to your Supabase API

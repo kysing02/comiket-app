@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Comiket Helper Scraper",
+  "version": "1.0",
+  "description": "Scrape X posts and send them to your Comiket Helper app.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["https://x.com/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://x.com/*"],
+      "js": ["content.js"]
+    }
+  ]
+}

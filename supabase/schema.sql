@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS circles (
     block TEXT, -- e.g., 'A', 'B'
     space_number TEXT, -- e.g., '12b'
     map_url TEXT,
+    x_url TEXT,
     is_deleted BOOLEAN DEFAULT FALSE
 );
 
@@ -24,6 +25,7 @@ CREATE TABLE IF NOT EXISTS items (
     priority TEXT DEFAULT 'Medium', -- 'High', 'Medium', 'Low'
     buyer TEXT, -- 'Me', 'FriendA', etc.
     is_purchased BOOLEAN DEFAULT FALSE,
+    is_wanted BOOLEAN DEFAULT FALSE,
     image_url TEXT,
     memo TEXT
 );

@@ -1,0 +1,216 @@
+.container {
+    padding: 1rem;
+}
+
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.filterGroup {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+}
+
+.stats {
+    display: flex;
+    justify-content: space-around;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
+}
+
+.statItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.statLabel {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.statValue {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--foreground);
+}
+
+.pill {
+    white-space: nowrap;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+    border: 1px solid var(--glass-border);
+}
+
+.pill.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.itemCard {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+}
+
+.badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.dayBadge {
+    background: rgba(99, 102, 241, 0.2);
+    color: var(--primary);
+}
+
+.priorityBadge.high {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+}
+
+.priorityBadge.medium {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning);
+}
+
+.priorityBadge.low {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+}
+
+.mainInfo {
+    display: flex;
+    gap: 1rem;
+}
+
+.imagePreview {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+}
+
+.details {
+    flex: 1;
+}
+
+.circleName {
+    font-size: 1.1rem;
+    margin-bottom: 0.2rem;
+}
+
+.artistName {
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.locationInfo {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.goodsList {
+    border-top: 1px solid var(--glass-border);
+    padding-top: 0.75rem;
+}
+
+.goodEntry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.goodName {
+    font-size: 0.9rem;
+}
+
+.goodPrice {
+    font-weight: 700;
+    color: var(--secondary);
+}
+
+.purchased {
+    opacity: 0.5;
+    text-decoration: line-through;
+}
+
+.actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.buyer {
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+.checkbox {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 2px solid var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.checkbox.checked {
+    background: var(--primary);
+}
+
+/* Table view for Desktop */
+@media (min-width: 1024px) {
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th,
+    .table td {
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .table th {
+        font-size: 0.8rem;
+        color: var(--muted);
+        text-transform: uppercase;
+    }
+}
