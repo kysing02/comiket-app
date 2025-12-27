@@ -33,8 +33,8 @@ export default function Home() {
     defaultBuyer: string;
     buyerList: string[];
   }>({
-    aiModel: "gpt-4o-mini",
-    ocrMethod: "combined",
+    aiModel: "gemini-3-flash-preview",
+    ocrMethod: "vision",
     defaultBuyer: "",
     buyerList: ["Me", "Friend A", "Friend B"]
   });
@@ -127,7 +127,6 @@ export default function Home() {
         .from("scraped_posts")
         .select("*")
         .eq("is_read", false)
-        .eq("is_ignored", false)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -163,8 +162,8 @@ export default function Home() {
     };
   }, []);
 
-  const handleIgnorePost = async (postId: string) => {
-    await supabase.from("scraped_posts").update({ is_ignored: true }).eq("id", postId);
+  const handleMarkAsRead = async (postId: string) => {
+    await supabase.from("scraped_posts").update({ is_read: true }).eq("id", postId);
     fetchScrapedPosts();
   };
 
@@ -176,7 +175,8 @@ export default function Home() {
       map_url: post.image_urls?.[0] || "",
       // Pass the raw data for AI to process further
       scrapedContent: post.content,
-      scraped_id: post.id
+      scraped_id: post.id,
+      username: post.username // Pass username as hint for AI
     });
     setIsModalOpen(true);
   };
@@ -330,6 +330,9 @@ export default function Home() {
                   <div className={styles.scrapedGrid}>
                     {scrapedPosts.map((post) => (
                       <div key={post.id} className={`${styles.scrapedCard} glass`}>
+                        <div className={styles.scrapedHeader}>
+                          <span className={styles.scrapedArtist}>{post.username || "X Post"}</span>
+                        </div>
                         <div className={styles.scrapedContent}>
                           <p>{post.content}</p>
                           {post.image_urls?.length > 0 && (
@@ -343,7 +346,7 @@ export default function Home() {
                         <div className={styles.scrapedActions}>
                           <button
                             className={styles.ignoreBtn}
-                            onClick={() => handleIgnorePost(post.id)}
+                            onClick={() => handleMarkAsRead(post.id)}
                           >
                             Ignore
                           </button>
@@ -439,7 +442,8 @@ export default function Home() {
             onSuccess={() => {
               fetchItems();
               fetchCircles();
-              setActiveTab("list");
+              fetchScrapedPosts(); // Update inbox immediately
+              setActiveTab("feed"); // Redirect to Feed
             }}
           />
         )}

@@ -13,6 +13,8 @@ export default function ArtistCard({ circle, onEdit, onDelete }: ArtistCardProps
     const [view, setView] = useState<"image" | "list">("image");
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
     const [contentHeight, setContentHeight] = useState<number | undefined>(undefined);
+    // Construct image array
+    const images = (circle.image_urls && circle.image_urls.length > 0) ? circle.image_urls : (circle.map_url ? [circle.map_url] : []);
 
     const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
         setContentHeight(e.currentTarget.offsetHeight);
@@ -100,7 +102,7 @@ export default function ArtistCard({ circle, onEdit, onDelete }: ArtistCardProps
 
             <ImageLightbox
                 isOpen={isLightboxOpen}
-                imageUrl={circle.map_url}
+                imageUrls={images}
                 onClose={() => setIsLightboxOpen(false)}
             />
         </div>

@@ -22,11 +22,11 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
     const [xUrl, setXUrl] = useState("");
     const [priceListImages, setPriceListImages] = useState<string[]>([""]);
     const [lightboxOpen, setLightboxOpen] = useState(false);
-    const [lightboxSrc, setLightboxSrc] = useState("");
+    const [lightboxImages, setLightboxImages] = useState<string[]>([]);
 
     // AI & Settings State
-    const [aiModel, setAiModel] = useState<any>(globalSettings?.aiModel || "gpt-4o-mini");
-    const [ocrMethod, setOcrMethod] = useState<any>(globalSettings?.ocrMethod || "combined");
+    const [aiModel, setAiModel] = useState<any>(globalSettings?.aiModel || "gemini-3-flash-preview");
+    const [ocrMethod, setOcrMethod] = useState<any>(globalSettings?.ocrMethod || "vision");
     const [extractItems, setExtractItems] = useState(true); // Default true, user can toggle for speed
     const [showSettings, setShowSettings] = useState(false);
 
@@ -175,7 +175,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                     imageUrls: ocrMethod === "vision" ? imageUrls : [],
                     model: aiModel,
                     includeItems: extractItems,
-                    authorName: artist // Pass manually entered artist to help AI
+                    authorName: artist || initialData?.username // Use artist or scraped username
                 }),
             });
 
@@ -262,6 +262,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                         block,
                         space_number,
                         map_url: priceListImages[0] || "",
+                        image_urls: priceListImages.filter(img => img.trim() !== ""), // Update all images
                         x_url: xUrl
                     })
                     .eq("id", circleId);
@@ -278,6 +279,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                         block,
                         space_number,
                         map_url: priceListImages[0] || "",
+                        image_urls: priceListImages.filter(img => img.trim() !== ""), // Save all images
                         x_url: xUrl
                     })
                     .select()
@@ -449,7 +451,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                                     </select>
                                 </div>
                                 <div className={styles.inputGroup}>
-                                    <label>Location (e.g., 東ア-74a)</label>
+                                    <label>Location (e.g., 東1-ア-74a)</label>
                                     <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="glass" />
                                 </div>
                             </div>
@@ -457,13 +459,24 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                             <div className={styles.inputGroup}>
                                 <div className={styles.labelRow}>
                                     <label>Price List Images</label>
-                                    <button className={styles.addImgBtn} onClick={() => setPriceListImages([...priceListImages, ""])}>
-                                        <Plus size={14} /> Add Image
-                                    </button>
+                                    <div className={styles.labelActions}>
+                                        <span className={styles.labelHint}>Only the first image is auto-read. Add others manually!</span>
+                                        <button className={styles.addImgBtn} onClick={() => setPriceListImages([...priceListImages, ""])}>
+                                            <Plus size={14} /> Add Image
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {priceListImages.map((imgUrl, idx) => (
                                     <div key={idx} className={styles.imageInputRow}>
+                                        {imgUrl && (
+                                            <img
+                                                src={imgUrl}
+                                                className={styles.imageThumb}
+                                                alt={`Preview ${idx + 1}`}
+                                                onClick={() => { setLightboxImages([imgUrl]); setLightboxOpen(true); }}
+                                            />
+                                        )}
                                         <div className={styles.imageInputWrapper}>
                                             <input
                                                 type="text"
@@ -477,15 +490,21 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                                                 className="glass"
                                             />
                                             {imgUrl && (
-                                                <button className={styles.previewBtn} onClick={() => { setLightboxSrc(imgUrl); setLightboxOpen(true); }}>
-                                                    <ImageIcon size={16} />
-                                                </button>
+                                                <div className={styles.inputActionOverlay}>
+                                                    <button className={styles.previewBtn} onClick={() => { setLightboxImages([imgUrl]); setLightboxOpen(true); }} title="Preview">
+                                                        <ImageIcon size={14} />
+                                                    </button>
+                                                    <button className={styles.linkBtn} onClick={() => window.open(imgUrl, '_blank')} title="Open Layout">
+                                                        <LinkIcon size={14} />
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                         {priceListImages.length > 1 && (
                                             <button
                                                 className={styles.removeImgBtn}
                                                 onClick={() => setPriceListImages(priceListImages.filter((_, i) => i !== idx))}
+                                                title="Remove"
                                             >
                                                 <X size={16} />
                                             </button>
@@ -499,7 +518,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                             {/* Fixed Header with Price List Preview if available */}
                             {/* Fixed Header with Price List Preview if available */}
                             {priceListImages.length > 0 && priceListImages[0] && (
-                                <div className={styles.fixedPreview} onClick={() => { setLightboxSrc(priceListImages[0]); setLightboxOpen(true); }}>
+                                <div className={styles.fixedPreview} onClick={() => { setLightboxImages(priceListImages); setLightboxOpen(true); }}>
                                     <div className={styles.fixedPreviewInner}>
                                         <img src={priceListImages[0]} alt="Reference" />
                                         <span className={styles.previewHint}>Tap to Zoom ({priceListImages.length})</span>
@@ -598,7 +617,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
 
                 <ImageLightbox
                     isOpen={lightboxOpen}
-                    imageUrl={lightboxSrc}
+                    imageUrls={lightboxImages}
                     onClose={() => setLightboxOpen(false)}
                 />
             </motion.div>

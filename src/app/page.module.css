@@ -107,8 +107,9 @@
 .feedContainer {
   min-height: 50vh;
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  /* Stretch children (like ShoppingList) to full width */
 }
 
 .emptyState {
@@ -386,6 +387,23 @@
   flex-direction: column;
   gap: 1rem;
   border-radius: 16px;
+}
+
+.scrapedHeader {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.scrapedArtist {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .scrapedContent p {

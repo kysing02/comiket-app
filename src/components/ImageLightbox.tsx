@@ -1,19 +1,21 @@
 "use client";
 
 import { motion, AnimatePresence, useMotionValue, animate } from "framer-motion";
-import { X } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import styles from "./ImageLightbox.module.css";
 
 interface ImageLightboxProps {
     isOpen: boolean;
-    imageUrl: string;
+    imageUrls: string[]; // Changed to array
+    initialIndex?: number;
     onClose: () => void;
 }
 
-export default function ImageLightbox({ isOpen, imageUrl, onClose }: ImageLightboxProps) {
+export default function ImageLightbox({ isOpen, imageUrls = [], initialIndex = 0, onClose }: ImageLightboxProps) {
     const [mounted, setMounted] = useState(false);
+    const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [scale, setScale] = useState(1);
     const [prevDist, setPrevDist] = useState(0);
     const [imgSize, setImgSize] = useState({ width: 0, height: 0 });
@@ -22,6 +24,13 @@ export default function ImageLightbox({ isOpen, imageUrl, onClose }: ImageLightb
     const x = useMotionValue(0);
     const y = useMotionValue(0);
     const imgRef = useRef<HTMLImageElement>(null);
+
+    // Sync index if initial changes (optional, mostly for single open)
+    useEffect(() => {
+        if (isOpen) {
+            setCurrentIndex(initialIndex);
+        }
+    }, [isOpen, initialIndex]);
 
     useEffect(() => {
         setMounted(true);
@@ -67,7 +76,7 @@ export default function ImageLightbox({ isOpen, imageUrl, onClose }: ImageLightb
         const zoomStep = 0.2;
         setScale((prev) => {
             const newScale = prev - (delta > 0 ? zoomStep : -zoomStep);
-            return Math.max(1, Math.min(newScale, 5)); // Minimum scale 1 to prevent black edges
+            return Math.max(1, Math.min(newScale, 5));
         });
     };
 
@@ -95,12 +104,45 @@ export default function ImageLightbox({ isOpen, imageUrl, onClose }: ImageLightb
     const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
         const { naturalWidth, naturalHeight } = e.currentTarget;
         const dw = window.innerWidth;
-        const dh = (naturalHeight / naturalWidth) * dw;
+        const dh = (naturalHeight / naturalWidth) * dw; // Keep aspect ratio, fit width
         setImgSize({ width: dw, height: dh });
         setScale(1);
+        x.set(0);
+        y.set(0);
     };
 
+    const nextImage = useCallback((e?: React.MouseEvent) => {
+        e?.stopPropagation();
+        if (currentIndex < imageUrls.length - 1) {
+            setCurrentIndex(prev => prev + 1);
+            setScale(1);
+        }
+    }, [currentIndex, imageUrls.length]);
+
+    const prevImage = useCallback((e?: React.MouseEvent) => {
+        e?.stopPropagation();
+        if (currentIndex > 0) {
+            setCurrentIndex(prev => prev - 1);
+            setScale(1);
+        }
+    }, [currentIndex]);
+
+    // Keyboard Nav
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "ArrowRight") nextImage();
+            if (e.key === "ArrowLeft") prevImage();
+            if (e.key === "Escape") onClose();
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [isOpen, nextImage, prevImage, onClose]);
+
     if (!mounted) return null;
+
+    // Safety check
+    const currentSrc = imageUrls[currentIndex] || "";
 
     return createPortal(
         <AnimatePresence>
@@ -119,20 +161,36 @@ export default function ImageLightbox({ isOpen, imageUrl, onClose }: ImageLightb
                         <X size={28} />
                     </button>
 
+                    {/* Navigation Buttons */}
+                    {currentIndex > 0 && (
+                        <button className={`${styles.navBtn} ${styles.prevBtn}`} onClick={prevImage}>
+                            <ChevronLeft size={32} />
+                        </button>
+                    )}
+                    {currentIndex < imageUrls.length - 1 && (
+                        <button className={`${styles.navBtn} ${styles.nextBtn}`} onClick={nextImage}>
+                            <ChevronRight size={32} />
+                        </button>
+                    )}
+
+                    {/* Counter Badge */}
+                    {imageUrls.length > 1 && (
+                        <div className={styles.counterBadge}>
+                            {currentIndex + 1} / {imageUrls.length}
+                        </div>
+                    )}
+
                     <div className={styles.container} onClick={(e) => e.stopPropagation()}>
                         <motion.img
+                            key={currentSrc} // Key change forces re-render for clean transition
                             ref={imgRef}
-                            src={imageUrl}
-                            alt="Zoomable"
+                            src={currentSrc}
+                            alt={`Image ${currentIndex + 1}`}
                             className={styles.image}
                             onLoad={handleImageLoad}
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: scale, opacity: 1 }}
-                            exit={{ scale: 0.8, opacity: 0 }}
-                            style={{
-                                x,
-                                y
-                            }}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: scale, x: x.get(), y: y.get() }} // Bind motion values? No, bind via style prop for drag
+                            style={{ x, y, scale }} // Scale here to separate from drag
                             drag
                             dragConstraints={constraints}
                             dragElastic={0}
@@ -140,10 +198,6 @@ export default function ImageLightbox({ isOpen, imageUrl, onClose }: ImageLightb
                             whileTap={{ cursor: "grabbing" }}
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         />
-                    </div>
-
-                    <div className={styles.hint}>
-                        Scroll/Pinch to zoom. Drag to move.
                     </div>
                 </motion.div>
             )}

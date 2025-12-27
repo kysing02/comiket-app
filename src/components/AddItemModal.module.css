@@ -58,10 +58,10 @@
 
 .content {
     flex: 1;
-    overflow-y: auto;
-    padding: 1.5rem;
+    overflow: hidden;
+    /* Consolidate scrolling to inner containers */
+    padding: 1rem;
     display: flex;
-    /* Allow children to flex */
     flex-direction: column;
 }
 
@@ -70,6 +70,129 @@
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+    overflow-y: auto;
+    flex: 1;
+    scrollbar-gutter: stable;
+}
+
+/* Price List Image Section */
+.labelRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    /* Align label better with hint/btn */
+    margin-bottom: 0.5rem;
+}
+
+.labelActions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+}
+
+.labelHint {
+    font-size: 0.65rem;
+    color: var(--secondary);
+    opacity: 0.8;
+}
+
+.addImgBtn {
+    background: var(--primary);
+    /* Force visible background */
+    border: none;
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px var(--primary-glow);
+}
+
+.addImgBtn:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.imageInputRow {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+}
+
+.imageThumb {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--glass-border);
+    flex-shrink: 0;
+}
+
+.imageInputWrapper {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.inputActionOverlay {
+    position: absolute;
+    right: 0.5rem;
+    display: flex;
+    gap: 0.25rem;
+}
+
+.previewBtn,
+.linkBtn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: var(--primary);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.previewBtn:hover,
+.linkBtn:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.removeImgBtn {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.removeImgBtn:hover {
+    background: #ef4444;
+    color: white;
 }
 
 .inputGroup {
@@ -103,7 +226,7 @@
 }
 
 .aiInputWrapper,
-.imageInputWrapper {
+.imageInputWrapper input {
     position: relative;
     display: flex;
     align-items: center;
@@ -221,9 +344,10 @@
     flex-direction: column;
     /* Occupy full remaining height */
     flex: 1;
-    margin: -1.5rem;
-    /* Cancel out parent padding to allow full-width headers */
+    margin: -1rem;
+    /* Match parent content padding */
     overflow: hidden;
+    /* Strict overflow control */
 }
 
 /* Fixed Preview Header in Step 2 */
@@ -301,8 +425,13 @@
 .itemsScrollContainer {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
+    /* Prevent horizontal phantom scrollbars */
     padding: 0 1.5rem 1rem 1.5rem;
+    scrollbar-gutter: stable;
+    min-height: 0;
 }
+
 
 .itemsList {
     display: flex;
@@ -315,9 +444,16 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.75rem;
+    padding: 0.5rem;
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.02);
+    box-sizing: border-box;
+    width: 100%;
+    transition: background 0.2s;
+}
+
+.itemRow:hover {
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .itemCheck {
@@ -372,7 +508,7 @@
 }
 
 .itemQtyInput {
-    width: 40px;
+    width: 44px;
     padding: 0.25rem;
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.05);
@@ -380,28 +516,20 @@
     color: white;
     text-align: center;
     font-size: 0.8rem;
-    -moz-appearance: textfield;
 }
 
-.itemQtyInput::-webkit-outer-spin-button,
-.itemQtyInput::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
+/* Removed transition and appearance overrides to prevent layout shifts */
 
 .itemPrioritySelect {
-    width: 50px;
+    width: 60px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--glass-border);
     color: var(--muted);
     font-size: 0.75rem;
-    padding: 0.35rem 0.1rem;
+    padding: 0.35rem 0.2rem;
     border-radius: 6px;
     cursor: pointer;
-    appearance: none;
     text-align: center;
-    background-image: none;
-    /* No arrow for priority to save space */
 }
 
 /* Custom Arrow for Buyer Select */
@@ -418,12 +546,9 @@
     color: white;
     font-size: 0.8rem;
     padding: 0.35rem 1.5rem 0.35rem 0.5rem;
-    /* Right padding for arrow */
     border-radius: 6px;
     cursor: pointer;
     appearance: none;
-
-    /* Custom Chevron SVG */
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.2rem center;

@@ -16,7 +16,7 @@ export default function ShoppingList({ items, onUpdate }: ShoppingListProps) {
     const [filterPriority, setFilterPriority] = useState<string[]>([]); // Array for multiple selection
     // Lightbox State
     const [lightboxOpen, setLightboxOpen] = useState(false);
-    const [lightboxSrc, setLightboxSrc] = useState("");
+    const [lightboxImages, setLightboxImages] = useState<string[]>([]);
 
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
@@ -86,6 +86,7 @@ export default function ShoppingList({ items, onUpdate }: ShoppingListProps) {
     };
 
     const filteredItems = items.filter(it => {
+        if ((it.quantity || 0) <= 0) return false; // Hide 0 qty items
         const dayMatch = !filterDay || it.circles?.day === filterDay;
         const priorityMatch = filterPriority.length === 0 || filterPriority.includes(it.priority);
         return dayMatch && priorityMatch;
@@ -99,17 +100,35 @@ export default function ShoppingList({ items, onUpdate }: ShoppingListProps) {
     const purchasedCount = filteredItems.filter(it => it.is_purchased).length;
 
 
-    const openLightbox = (image: string) => {
-        if (!image) return;
-        setLightboxSrc(image);
-        setLightboxOpen(true);
+    const openLightbox = (itemImg?: string, circleImgs?: string[], mapUrl?: string) => {
+        let imagesToView: string[] = [];
+
+        // 1. Item-specific image
+        if (itemImg) imagesToView.push(itemImg);
+
+        // 2. Circle image gallery
+        if (Array.isArray(circleImgs)) {
+            circleImgs.forEach(url => {
+                if (url && !imagesToView.includes(url)) imagesToView.push(url);
+            });
+        }
+
+        // 3. Map URL
+        if (mapUrl && !imagesToView.includes(mapUrl)) {
+            imagesToView.push(mapUrl);
+        }
+
+        if (imagesToView.length > 0) {
+            setLightboxImages(imagesToView);
+            setLightboxOpen(true);
+        }
     }
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Delete this item?")) return;
-        const { error } = await supabase.from("items").delete().eq("id", id);
+    const handleDelete = async (id: string, name: string) => {
+        if (!confirm(`Remove "${name}" from Shopping List? (Sets quantity to 0)`)) return;
+        const { error } = await supabase.from("items").update({ quantity: 0 }).eq("id", id);
         if (error) {
-            console.error("Failed to delete item", error);
+            console.error("Failed to update item", error);
         } else {
             onUpdate();
         }
@@ -183,7 +202,22 @@ export default function ShoppingList({ items, onUpdate }: ShoppingListProps) {
                 {/* Table Rows */}
                 <div className={styles.list}>
                     {sortedItems.map((item) => (
-                        <div key={item.id} className={`${styles.tableRow} ${item.is_purchased ? styles.purchasedRow : ""} glass-card`}>
+                        <div
+                            key={item.id}
+                            className={`${styles.tableRow} ${item.is_purchased ? styles.purchasedRow : ""} glass-card`}
+                            onClick={(e) => {
+                                // Don't trigger if clicked on checkbox, image button, or delete button
+                                const target = e.target as HTMLElement;
+                                if (target.closest(`.${styles.checkbox}`) ||
+                                    target.closest(`.${styles.imgBtn}`) ||
+                                    target.closest(`.${styles.deleteBtn}`)) {
+                                    return;
+                                }
+                                if (item.image_url || item.circles?.image_urls || item.circles?.map_url) {
+                                    openLightbox(item.image_url, item.circles?.image_urls, item.circles?.map_url);
+                                }
+                            }}
+                        >
                             {/* 1. Status Checkbox */}
                             <div className={styles.colStatus}>
                                 <button
@@ -229,13 +263,13 @@ export default function ShoppingList({ items, onUpdate }: ShoppingListProps) {
                             {/* 5. Image & Delete Action */}
                             <div className={styles.colAction}>
                                 {item.image_url ? (
-                                    <button className={styles.imgBtn} onClick={() => openLightbox(item.image_url)}>
+                                    <button className={styles.imgBtn} onClick={() => openLightbox(item.image_url, item.circles?.image_urls, item.circles?.map_url)}>
                                         <ImageIcon size={18} />
                                     </button>
                                 ) : (
                                     <span className={styles.noImg}></span>
                                 )}
-                                <button className={styles.deleteBtn} onClick={() => handleDelete(item.id)}>
+                                <button className={styles.deleteBtn} onClick={() => handleDelete(item.id, item.name)}>
                                     <Trash2 size={16} />
                                 </button>
                             </div>
@@ -252,7 +286,7 @@ export default function ShoppingList({ items, onUpdate }: ShoppingListProps) {
 
             <ImageLightbox
                 isOpen={lightboxOpen}
-                imageUrl={lightboxSrc}
+                imageUrls={lightboxImages}
                 onClose={() => setLightboxOpen(false)}
             />
         </div>

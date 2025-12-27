@@ -65,8 +65,8 @@ sendBtn.addEventListener('click', async () => {
         url: currentData.url,
         content: currentData.content,
         image_urls: currentData.image_urls,
-        is_read: false,
-        is_ignored: false
+        username: currentData.username,
+        is_read: false
       })
     });
 

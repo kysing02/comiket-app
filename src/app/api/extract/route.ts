@@ -9,7 +9,7 @@ export async function POST(req: Request) {
       
       【RULES】
       - Circle/Artist Information: Extract circle name, artist name, day (1 for Dec 30/Tue, 2 for Dec 31/Wed), and location details.
-      - Author Name Hint: The user provided author name is '${authorName || "N/A"}'. If valid, PRIORITIZE this. Note that '${authorName}' might contain ID parts like '@user'; extract ONLY the name part (e.g. 'komori' from 'komori_yuki').
+      - Author Name Hint: The provided X username is '${authorName || ""}'. Extract the CLEAN artist name (e.g. from 'ももこ🍑C107/1日目' extract 'ももこ'). If valid, PRIORITIZE this.
       - Items: ${includeItems ? "Extract ALL items with prices (number)." : "SKIP ITEM EXTRACTION. Return empty array."}
       - Localization: Always use Japanese for circle/item names and location details.
       
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       
       Return ONLY a JSON object:
       {
-        "circle": { "name": "...", "artist": "...", "day": "1|2", "area": "東|西", "block": "...", "space_number": "..." },
+        "circle": { "name": "...", "artist": "...", "day": "1|2", "area": "東|西", "block": "1|2|3|4|5|6|7", "space_number": "..." },
         "items": [ ${includeItems ? `{ "name": "...", "price": 0, "priority": "Medium" }` : ``} ]
       }
     `;

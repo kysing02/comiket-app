@@ -38,8 +38,8 @@ CREATE TABLE IF NOT EXISTS scraped_posts (
     url TEXT NOT NULL,
     content TEXT,
     image_urls TEXT[], -- Array of image URLs
+    username TEXT,     -- X Username (display name)
     is_read BOOLEAN DEFAULT FALSE,
-    is_ignored BOOLEAN DEFAULT FALSE,
     raw_data JSONB
 );
 

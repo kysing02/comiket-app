@@ -39,14 +39,30 @@ function scrapeCurrentTweet() {
   // Remove duplicates
   image_urls = [...new Set(image_urls)];
 
-  // 4. Fallback if no text but images exist (common in media-heavy posts)
+  // 4. Extract Username (Display Name)
+  let username = "";
+  const usernameSelectors = [
+    '[data-testid="User-Name"] span:first-child',
+    'article[data-testid="tweet"] [data-testid="User-Name"] span:first-child'
+  ];
+
+  for (const selector of usernameSelectors) {
+    const el = document.querySelector(selector);
+    if (el && el.innerText.trim()) {
+      username = el.innerText;
+      break;
+    }
+  }
+
+  // 5. Fallback if no text but images exist (common in media-heavy posts)
   if (!text && image_urls.length === 0) return null;
 
   return {
     post_id: postId,
     url: tweetUrl,
     content: text,
-    image_urls: image_urls
+    image_urls: image_urls,
+    username: username
   };
 }
 
