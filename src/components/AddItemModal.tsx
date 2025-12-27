@@ -14,11 +14,12 @@ interface AddItemModalProps {
     onSuccess: () => void;
     initialData?: any;
     globalSettings?: any;
+    initialStep?: 1 | 2;
 }
 
-export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, globalSettings }: AddItemModalProps) {
+export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, globalSettings, initialStep }: AddItemModalProps) {
     const [loading, setLoading] = useState(false);
-    const [step, setStep] = useState<1 | 2>(1);
+    const [step, setStep] = useState<1 | 2>(initialStep || 1);
     const [xUrl, setXUrl] = useState("");
     const [priceListImages, setPriceListImages] = useState<string[]>([""]);
     const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -35,7 +36,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
     const [artist, setArtist] = useState("");
     const [day, setDay] = useState("1");
     const [location, setLocation] = useState("");
-    const [items, setItems] = useState([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: "", isWanted: false }]);
+    const [items, setItems] = useState([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: "", isWanted: false, tags: [] as any[] }]);
     const [retryTimer, setRetryTimer] = useState<number | null>(null);
     const [isInitialized, setIsInitialized] = useState(false);
 
@@ -55,6 +56,13 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
         const timer = setTimeout(() => setRetryTimer(retryTimer - 1), 1000);
         return () => clearTimeout(timer);
     }, [retryTimer]);
+
+    // Reset step when modal opens with new initialData/initialStep
+    useEffect(() => {
+        if (isOpen) {
+            setStep(initialStep || 1);
+        }
+    }, [isOpen, initialStep]);
 
     // Draft Logic
     useEffect(() => {
@@ -101,8 +109,15 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                 setArtist(initialData.artist || "");
                 setDay(initialData.day || "1");
                 setLocation(`${initialData.area || ""}${initialData.block || ""}-${initialData.space_number || ""}`.replace(/^-|-$/, ""));
-                setLocation(`${initialData.area || ""}${initialData.block || ""}-${initialData.space_number || ""}`.replace(/^-|-$/, ""));
-                setPriceListImages([initialData.map_url || ""]);
+
+                if (initialData.scraped_id) {
+                    // Import Mode: Start with first image, let user add more
+                    setPriceListImages(initialData.image_urls && initialData.image_urls.length > 0 ? [initialData.image_urls[0]] : [initialData.map_url || ""]);
+                } else {
+                    // Edit Mode: Show all existing images
+                    setPriceListImages(initialData.image_urls && initialData.image_urls.length > 0 ? initialData.image_urls : [initialData.map_url || ""]);
+                }
+
                 setXUrl(initialData.x_url || "");
                 if (initialData.items && initialData.items.length > 0) {
                     setItems(initialData.items.map((it: any) => ({
@@ -112,10 +127,11 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                         quantity: it.quantity || 0,
                         priority: it.priority || "Medium",
                         buyer: it.buyer || globalSettings?.defaultBuyer || "",
-                        isWanted: it.is_wanted || false
+                        isWanted: it.is_wanted || false,
+                        tags: it.tags || []
                     })));
                 } else {
-                    setItems([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: globalSettings?.defaultBuyer || "", isWanted: false }]);
+                    setItems([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: globalSettings?.defaultBuyer || "", isWanted: false, tags: [] }]);
                 }
             }
         } else {
@@ -145,7 +161,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                 setLocation("");
                 setPriceListImages([""]);
                 setXUrl("");
-                setItems([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: globalSettings?.defaultBuyer || "", isWanted: false }]);
+                setItems([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: globalSettings?.defaultBuyer || "", isWanted: false, tags: [] }]);
             }
         }
         setIsInitialized(true);
@@ -206,7 +222,8 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                     quantity: 0,
                     priority: it.priority || "Medium",
                     buyer: globalSettings?.defaultBuyer || "",
-                    isWanted: false
+                    isWanted: false,
+                    tags: []
                 })));
             }
         } catch (error) {
@@ -217,8 +234,21 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
         }
     };
 
+    const addPriceListImage = () => {
+        if (initialData?.image_urls && initialData.image_urls.length > 0) {
+            // Find next image in array that's not already in priceListImages
+            const nextImg = initialData.image_urls.find((url: string) => !priceListImages.includes(url));
+            if (nextImg) {
+                setPriceListImages([...priceListImages, nextImg]);
+                return;
+            }
+        }
+        // Fallback to empty if no more scraped images
+        setPriceListImages([...priceListImages, ""]);
+    };
+
     const addItem = () => {
-        setItems([...items, { id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: globalSettings?.defaultBuyer || "", isWanted: false }]);
+        setItems([...items, { id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: globalSettings?.defaultBuyer || "", isWanted: false, tags: [] }]);
     };
 
     const removeItem = (index: number) => {
@@ -228,6 +258,17 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
     const handleItemChange = (index: number, field: string, value: any) => {
         const newItems = [...items];
         (newItems[index] as any)[field] = value;
+        setItems(newItems);
+    };
+
+    const toggleTag = (itemIndex: number, color: string) => {
+        const newItems = [...items];
+        const currentTags = newItems[itemIndex].tags || [];
+        if (currentTags.includes(color)) {
+            newItems[itemIndex].tags = currentTags.filter((c: string) => c !== color);
+        } else {
+            newItems[itemIndex].tags = [...currentTags, color];
+        }
         setItems(newItems);
     };
 
@@ -304,6 +345,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                     priority: it.priority || "Medium",
                     buyer: it.buyer || "",
                     is_wanted: it.isWanted || false,
+                    tags: it.tags || []
                 }));
 
             if (itemsToInsert.length === 0) {
@@ -314,7 +356,8 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                     quantity: 1,
                     priority: "Medium",
                     buyer: "",
-                    is_wanted: false
+                    is_wanted: false,
+                    tags: []
                 });
             }
 
@@ -461,7 +504,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                                     <label>Price List Images</label>
                                     <div className={styles.labelActions}>
                                         <span className={styles.labelHint}>Only the first image is auto-read. Add others manually!</span>
-                                        <button className={styles.addImgBtn} onClick={() => setPriceListImages([...priceListImages, ""])}>
+                                        <button className={styles.addImgBtn} onClick={addPriceListImage}>
                                             <Plus size={14} /> Add Image
                                         </button>
                                     </div>
@@ -536,63 +579,78 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                             <div className={styles.itemsScrollContainer}>
                                 <div className={styles.itemsList}>
                                     {items.map((item, index) => (
-                                        <div key={item.id} className={`${styles.itemRow} glass`}>
-                                            <input
-                                                type="checkbox"
-                                                checked={item.isWanted}
-                                                onChange={(e) => handleItemChange(index, "isWanted", e.target.checked)}
-                                                className={styles.itemCheck}
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="Item Name"
-                                                value={item.name}
-                                                onChange={(e) => handleItemChange(index, "name", e.target.value)}
-                                                className={styles.itemNameInput}
-                                            />
-                                            <input
-                                                type="number"
-                                                placeholder="¥"
-                                                value={item.price}
-                                                onChange={(e) => handleItemChange(index, "price", e.target.value)}
-                                                className={styles.itemPriceInput}
-                                            />
-                                            <div className={styles.qtyWrapper}>
+                                        <div className={`${styles.itemRow} glass`}>
+                                            <div className={styles.itemMainRow}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={item.isWanted}
+                                                    onChange={(e) => handleItemChange(index, "isWanted", e.target.checked)}
+                                                    className={styles.itemCheck}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Item Name"
+                                                    value={item.name}
+                                                    onChange={(e) => handleItemChange(index, "name", e.target.value)}
+                                                    className={styles.itemNameInput}
+                                                />
                                                 <input
                                                     type="number"
-                                                    placeholder="Qty"
-                                                    min="0"
-                                                    value={item.quantity || 0}
-                                                    onChange={(e) => handleItemChange(index, "quantity", parseInt(e.target.value))}
-                                                    className={styles.itemQtyInput}
+                                                    placeholder="¥"
+                                                    value={item.price}
+                                                    onChange={(e) => handleItemChange(index, "price", e.target.value)}
+                                                    className={styles.itemPriceInput}
                                                 />
+                                                <div className={styles.qtyWrapper}>
+                                                    <input
+                                                        type="number"
+                                                        placeholder="Qty"
+                                                        min="0"
+                                                        value={item.quantity || 0}
+                                                        onChange={(e) => handleItemChange(index, "quantity", parseInt(e.target.value))}
+                                                        className={styles.itemQtyInput}
+                                                    />
+                                                </div>
+                                                <div className={styles.priorityWrapper}>
+                                                    <select
+                                                        value={item.priority}
+                                                        onChange={(e) => handleItemChange(index, "priority", e.target.value)}
+                                                        className={styles.itemPrioritySelect}
+                                                    >
+                                                        <option value="High">高</option>
+                                                        <option value="Medium">中</option>
+                                                        <option value="Low">低</option>
+                                                    </select>
+                                                </div>
+                                                <div className={styles.assignWrapper}>
+                                                    <select
+                                                        value={item.buyer}
+                                                        onChange={(e) => handleItemChange(index, "buyer", e.target.value)}
+                                                        className={styles.itemBuyerSelect}
+                                                    >
+                                                        <option value="">Assign...</option>
+                                                        {globalSettings?.buyerList?.map((b: string) => (
+                                                            <option key={b} value={b}>{b}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <button className={styles.removeBtn} onClick={() => removeItem(index)}>
+                                                    <Trash2 size={16} />
+                                                </button>
                                             </div>
-                                            <div className={styles.priorityWrapper}>
-                                                <select
-                                                    value={item.priority}
-                                                    onChange={(e) => handleItemChange(index, "priority", e.target.value)}
-                                                    className={styles.itemPrioritySelect}
-                                                >
-                                                    <option value="High">高</option>
-                                                    <option value="Medium">中</option>
-                                                    <option value="Low">低</option>
-                                                </select>
-                                            </div>
-                                            <div className={styles.assignWrapper}>
-                                                <select
-                                                    value={item.buyer}
-                                                    onChange={(e) => handleItemChange(index, "buyer", e.target.value)}
-                                                    className={styles.itemBuyerSelect}
-                                                >
-                                                    <option value="">Assign...</option>
-                                                    {globalSettings?.buyerList?.map((b: string) => (
-                                                        <option key={b} value={b}>{b}</option>
+
+                                            <div className={styles.tagContainer}>
+                                                <div className={styles.colorSelector}>
+                                                    {['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6', '#6b7280'].map(c => (
+                                                        <div
+                                                            key={c}
+                                                            className={`${styles.colorDot} ${(item.tags || []).includes(c) ? styles.active : ""}`}
+                                                            style={{ backgroundColor: c, color: c }}
+                                                            onClick={() => toggleTag(index, c)}
+                                                        />
                                                     ))}
-                                                </select>
+                                                </div>
                                             </div>
-                                            <button className={styles.removeBtn} onClick={() => removeItem(index)}>
-                                                <Trash2 size={16} />
-                                            </button>
                                         </div>
                                     ))}
                                 </div>

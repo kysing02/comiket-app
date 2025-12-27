@@ -344,6 +344,42 @@
   width: 100%;
 }
 
+.feedSearchWrapper {
+  margin-bottom: 2rem;
+  padding: 0 1rem;
+}
+
+.searchBox {
+  position: relative;
+  display: flex;
+  align-items: center;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 1rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.searchBox input {
+  width: 100%;
+  padding: 0.8rem 1rem 0.8rem 3rem;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  color: white;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+
+.searchBox input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 15px var(--primary-glow);
+  outline: none;
+}
+
 @media (min-width: 800px) {
   .artistFeed {
     display: grid;

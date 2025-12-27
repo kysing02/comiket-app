@@ -52,8 +52,43 @@
 .controls {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.searchWrapper {
+    width: 100%;
     margin-bottom: 1rem;
+}
+
+.searchBox {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 12px;
+    color: var(--muted);
+    pointer-events: none;
+}
+
+.searchBox input {
+    width: 100%;
+    padding: 10px 12px 10px 36px;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    font-size: 0.9rem;
+    color: white;
+    background: rgba(255, 255, 255, 0.03);
+    transition: all 0.2s;
+}
+
+.searchBox input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 10px var(--primary-glow);
+    outline: none;
 }
 
 .filterRow {
@@ -271,10 +306,78 @@
 }
 
 .itemPrice {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.85rem;
+    font-weight: 700;
     color: var(--secondary);
     white-space: nowrap;
+}
+
+.priceLine {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.editBtn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: var(--muted);
+    padding: 0.2rem;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s;
+}
+
+.editBtn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    box-shadow: 0 0 8px var(--primary-glow);
+}
+
+.tagContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.tagDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+.colorPill {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.colorPill:hover {
+    transform: scale(1.1);
+}
+
+.colorPill.active {
+    border-color: white;
+    box-shadow: 0 0 8px currentColor;
+}
+
+.colorPill.active::after {
+    content: "✓";
+    font-size: 12px;
+    color: white;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
 }
 
 /* 3. Meta */

@@ -23,6 +23,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("feed");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCircle, setEditingCircle] = useState<any>(null);
+  const [modalStep, setModalStep] = useState<1 | 2>(1);
   const [items, setItems] = useState<any[]>([]);
   const [circles, setCircles] = useState<any[]>([]);
   const [scrapedPosts, setScrapedPosts] = useState<any[]>([]);
@@ -38,6 +39,7 @@ export default function Home() {
     defaultBuyer: "",
     buyerList: ["Me", "Friend A", "Friend B"]
   });
+  const [feedSearch, setFeedSearch] = useState("");
 
   /* Load Settings from LocalStorage */
   useEffect(() => {
@@ -173,6 +175,7 @@ export default function Home() {
       artist: "",
       x_url: post.url,
       map_url: post.image_urls?.[0] || "",
+      image_urls: post.image_urls || [],
       // Pass the raw data for AI to process further
       scrapedContent: post.content,
       scraped_id: post.id,
@@ -197,9 +200,6 @@ export default function Home() {
         <div className={styles.headerContent}>
           <h1>C107 <span className={styles.textGradient}>Tracker</span></h1>
           <div className={styles.headerActions}>
-            <button className={styles.iconBtn}>
-              <Search size={20} />
-            </button>
             <button className={styles.iconBtn} onClick={() => setActiveTab("settings")}>
               <Settings size={20} />
             </button>
@@ -227,7 +227,7 @@ export default function Home() {
             <p className={styles.loadingItems}>Loading items...</p>
           ) : activeTab === "list" ? (
             items.length > 0 ? (
-              <ShoppingList items={items} onUpdate={() => { fetchItems(); fetchCircles(); }} />
+              <ShoppingList items={items} onUpdate={() => { fetchItems(); fetchCircles(); }} onEditCircle={(circle, step) => { setEditingCircle(circle); setModalStep(step || 1); setIsModalOpen(true); }} />
             ) : (
               <div className={styles.emptyState}>
                 <div className={`${styles.emptyIcon} glass`}>
@@ -324,48 +324,73 @@ export default function Home() {
           ) : (
             /* New Feed Tab: Registered Artists & Scraped Inbox */
             <div className={styles.feedScrollArea}>
-              {scrapedPosts.length > 0 && (
-                <section className={styles.scrapedSection}>
-                  <h3 className={styles.sectionTitle}>Inbox: Scraped from X ({scrapedPosts.length})</h3>
-                  <div className={styles.scrapedGrid}>
-                    {scrapedPosts.map((post) => (
-                      <div key={post.id} className={`${styles.scrapedCard} glass`}>
-                        <div className={styles.scrapedHeader}>
-                          <span className={styles.scrapedArtist}>{post.username || "X Post"}</span>
+              <div className={styles.feedSearchWrapper}>
+                <div className={styles.searchBox}>
+                  <Search size={18} className={styles.searchIcon} />
+                  <input
+                    type="text"
+                    placeholder="Search artist, circle, or content..."
+                    value={feedSearch}
+                    onChange={(e) => setFeedSearch(e.target.value)}
+                    className="glass"
+                  />
+                </div>
+              </div>
+
+              {scrapedPosts.filter(p => !feedSearch ||
+                p.content?.toLowerCase().includes(feedSearch.toLowerCase()) ||
+                p.username?.toLowerCase().includes(feedSearch.toLowerCase())
+              ).length > 0 && (
+                  <section className={styles.scrapedSection}>
+                    <h3 className={styles.sectionTitle}>Inbox: Scraped from X ({scrapedPosts.filter(p => !feedSearch || p.content?.toLowerCase().includes(feedSearch.toLowerCase()) || p.username?.toLowerCase().includes(feedSearch.toLowerCase())).length})</h3>
+                    <div className={styles.scrapedGrid}>
+                      {scrapedPosts.filter(p => !feedSearch ||
+                        p.content?.toLowerCase().includes(feedSearch.toLowerCase()) ||
+                        p.username?.toLowerCase().includes(feedSearch.toLowerCase())
+                      ).map((post) => (
+                        <div key={post.id} className={`${styles.scrapedCard} glass`}>
+                          <div className={styles.scrapedHeader}>
+                            <span className={styles.scrapedArtist}>{post.username || "X Post"}</span>
+                          </div>
+                          <div className={styles.scrapedContent}>
+                            <p>{post.content}</p>
+                            {post.image_urls?.length > 0 && (
+                              <div className={styles.scrapedImages}>
+                                {post.image_urls.slice(0, 4).map((img: string, i: number) => (
+                                  <img key={i} src={img} alt="Preview" />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div className={styles.scrapedActions}>
+                            <button
+                              className={styles.ignoreBtn}
+                              onClick={() => handleMarkAsRead(post.id)}
+                            >
+                              Ignore
+                            </button>
+                            <button
+                              className={styles.importBtn}
+                              onClick={() => handleImportPost(post)}
+                            >
+                              Import
+                            </button>
+                          </div>
                         </div>
-                        <div className={styles.scrapedContent}>
-                          <p>{post.content}</p>
-                          {post.image_urls?.length > 0 && (
-                            <div className={styles.scrapedImages}>
-                              {post.image_urls.slice(0, 4).map((img: string, i: number) => (
-                                <img key={i} src={img} alt="Preview" />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className={styles.scrapedActions}>
-                          <button
-                            className={styles.ignoreBtn}
-                            onClick={() => handleMarkAsRead(post.id)}
-                          >
-                            Ignore
-                          </button>
-                          <button
-                            className={styles.importBtn}
-                            onClick={() => handleImportPost(post)}
-                          >
-                            Import
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
+                      ))}
+                    </div>
+                  </section>
+                )}
 
               <div className={styles.artistFeed}>
-                {circles.length > 0 ? (
-                  circles.map((circle) => (
+                {circles.filter(c => !feedSearch ||
+                  c.name?.toLowerCase().includes(feedSearch.toLowerCase()) ||
+                  c.artist?.toLowerCase().includes(feedSearch.toLowerCase())
+                ).length > 0 ? (
+                  circles.filter(c => !feedSearch ||
+                    c.name?.toLowerCase().includes(feedSearch.toLowerCase()) ||
+                    c.artist?.toLowerCase().includes(feedSearch.toLowerCase())
+                  ).map((circle) => (
                     <ArtistCard
                       key={circle.id}
                       circle={circle}
@@ -434,10 +459,12 @@ export default function Home() {
           <AddItemModal
             isOpen={isModalOpen}
             initialData={editingCircle}
+            initialStep={modalStep}
             globalSettings={appSettings}
             onClose={() => {
               setIsModalOpen(false);
               setEditingCircle(null);
+              setModalStep(1); // Reset
             }}
             onSuccess={() => {
               fetchItems();

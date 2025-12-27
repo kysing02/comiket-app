@@ -442,14 +442,21 @@
 
 .itemRow {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    flex-direction: column;
+    gap: 2px;
     padding: 0.5rem;
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.02);
     box-sizing: border-box;
     width: 100%;
     transition: background 0.2s;
+}
+
+.itemMainRow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
 }
 
 .itemRow:hover {
@@ -553,6 +560,95 @@
     background-repeat: no-repeat;
     background-position: right 0.2rem center;
     background-size: 1rem;
+}
+
+/* Tag Styles */
+.tagContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+    margin-left: 25px;
+    /* Alignment with name */
+    align-items: center;
+}
+
+.tagDot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.tag {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.tagRemove {
+    cursor: pointer;
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+}
+
+.tagRemove:hover {
+    opacity: 1;
+}
+
+.addTagBtn {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px dashed var(--glass-border);
+    color: var(--muted);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.addTagBtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-color: var(--primary);
+}
+
+.colorSelector {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+}
+
+.colorDot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.colorDot:hover {
+    transform: scale(1.2);
+}
+
+.colorDot.active {
+    border-color: white;
+    box-shadow: 0 0 8px currentColor;
 }
 
 .removeBtn {

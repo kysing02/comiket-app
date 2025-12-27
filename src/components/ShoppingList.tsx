@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, User, MapPin, Image as ImageIcon, Filter, Trash2 } from "lucide-react";
+import { Check, User, MapPin, Image as ImageIcon, Filter, Trash2, Search, Edit2 } from "lucide-react";
 import styles from "./ShoppingList.module.css";
 import { supabase } from "@/lib/supabase";
 import ImageLightbox from "./ImageLightbox";
@@ -9,11 +9,14 @@ import ImageLightbox from "./ImageLightbox";
 interface ShoppingListProps {
     items: any[];
     onUpdate: () => void;
+    onEditCircle: (circle: any, step?: 1 | 2) => void;
 }
 
-export default function ShoppingList({ items, onUpdate }: ShoppingListProps) {
+export default function ShoppingList({ items, onUpdate, onEditCircle }: ShoppingListProps) {
     const [filterDay, setFilterDay] = useState<string | null>(null);
     const [filterPriority, setFilterPriority] = useState<string[]>([]); // Array for multiple selection
+    const [filterTags, setFilterTags] = useState<string[]>([]); // Array of color hexes
+    const [searchQuery, setSearchQuery] = useState("");
     // Lightbox State
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxImages, setLightboxImages] = useState<string[]>([]);
@@ -37,7 +40,16 @@ export default function ShoppingList({ items, onUpdate }: ShoppingListProps) {
         }
     };
 
+    const toggleTagFilter = (color: string) => {
+        if (filterTags.includes(color)) {
+            setFilterTags(filterTags.filter(c => c !== color));
+        } else {
+            setFilterTags([...filterTags, color]);
+        }
+    };
+
     const clearPriorityFilter = () => setFilterPriority([]);
+    const clearTagFilter = () => setFilterTags([]);
 
     const handleSort = (key: string) => {
         let direction: 'asc' | 'desc' = 'asc';
@@ -89,7 +101,12 @@ export default function ShoppingList({ items, onUpdate }: ShoppingListProps) {
         if ((it.quantity || 0) <= 0) return false; // Hide 0 qty items
         const dayMatch = !filterDay || it.circles?.day === filterDay;
         const priorityMatch = filterPriority.length === 0 || filterPriority.includes(it.priority);
-        return dayMatch && priorityMatch;
+        const tagMatch = filterTags.length === 0 || filterTags.some(t => it.tags?.includes(t));
+        const searchMatch = !searchQuery ||
+            it.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            it.circles?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            it.circles?.artist?.toLowerCase().includes(searchQuery.toLowerCase());
+        return dayMatch && priorityMatch && tagMatch && searchMatch;
     });
 
     const sortedItems = getSortedItems(filteredItems);
@@ -157,6 +174,20 @@ export default function ShoppingList({ items, onUpdate }: ShoppingListProps) {
                 </div>
             </div>
 
+            {/* Search Box */}
+            <div className={styles.searchWrapper}>
+                <div className={styles.searchBox}>
+                    <Search size={16} className={styles.searchIcon} />
+                    <input
+                        type="text"
+                        placeholder="Search items, circles, or artists..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="glass"
+                    />
+                </div>
+            </div>
+
             {/* Filter Controls */}
             <div className={styles.controls}>
                 <div className={styles.filterRow}>
@@ -177,6 +208,20 @@ export default function ShoppingList({ items, onUpdate }: ShoppingListProps) {
                             {p}
                         </button>
                     ))}
+                </div>
+                <div className={styles.filterRow}>
+                    <span className={styles.filterLabel}>Tag:</span>
+                    <button className={`${styles.pill} ${filterTags.length === 0 ? styles.active : ""}`} onClick={clearTagFilter}>All</button>
+                    <div style={{ display: 'flex', gap: '8px', marginLeft: '4px' }}>
+                        {['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6', '#6b7280'].map(c => (
+                            <div
+                                key={c}
+                                className={`${styles.colorPill} ${filterTags.includes(c) ? styles.active : ""}`}
+                                style={{ backgroundColor: c, color: c }}
+                                onClick={() => toggleTagFilter(c)}
+                            />
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -238,8 +283,27 @@ export default function ShoppingList({ items, onUpdate }: ShoppingListProps) {
                                     <span className={styles.artistName}>@{item.circles?.artist}</span>
                                 </div>
                                 <div className={styles.itemLine}>
-                                    <span className={styles.itemName}>{item.name}</span>
-                                    <span className={styles.itemPrice}>¥{item.price?.toLocaleString()}</span>
+                                    <div>
+                                        <span className={styles.itemName}>{item.name}</span>
+                                        <div className={styles.tagContainer}>
+                                            {item.tags?.map((color: string, idx: number) => (
+                                                <span key={idx} className={styles.tagDot} style={{ backgroundColor: color }} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className={styles.priceLine}>
+                                        <span className={styles.itemPrice}>¥{item.price?.toLocaleString()}</span>
+                                        <button
+                                            className={styles.editBtn}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onEditCircle(item.circles, 2);
+                                            }}
+                                            title="Edit Circle/Items"
+                                        >
+                                            <Edit2 size={14} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
