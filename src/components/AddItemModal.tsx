@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import styles from "./AddItemModal.module.css";
 import { supabase } from "@/lib/supabase";
 import { performOCR } from "@/lib/ai";
+import { standardizeLocation } from "@/lib/location";
 import ImageLightbox from "./ImageLightbox";
 
 interface AddItemModalProps {
@@ -14,10 +15,11 @@ interface AddItemModalProps {
     onSuccess: () => void;
     initialData?: any;
     globalSettings?: any;
+    dbBuyers?: any[];
     initialStep?: 1 | 2;
 }
 
-export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, globalSettings, initialStep }: AddItemModalProps) {
+export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, globalSettings, dbBuyers, initialStep }: AddItemModalProps) {
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState<1 | 2>(initialStep || 1);
     const [xUrl, setXUrl] = useState("");
@@ -36,7 +38,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
     const [artist, setArtist] = useState("");
     const [day, setDay] = useState("1");
     const [location, setLocation] = useState("");
-    const [items, setItems] = useState([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: "", isWanted: false, tags: [] as any[] }]);
+    const [items, setItems] = useState([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyerIds: [] as string[], isWanted: false, tags: [] as any[] }]);
     const [retryTimer, setRetryTimer] = useState<number | null>(null);
     const [isInitialized, setIsInitialized] = useState(false);
 
@@ -99,7 +101,27 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                     // Smart Merge: If draft has empty URL/Image but initialData has it, prefer initialData
                     setPriceListImages(d.priceListImages && d.priceListImages.length > 0 ? d.priceListImages : [initialData.map_url || ""]);
                     setXUrl(d.xUrl || initialData.x_url || "");
-                    setItems(d.items);
+
+                    // Smart Item Merge: If DB has items but draft doesn't (or draft has empty row), prefer DB
+                    const dbItems = initialData.items && initialData.items.length > 0;
+                    const draftHasItems = d.items && d.items.length > 0 && (d.items.length > 1 || d.items[0].name !== "");
+
+                    if (dbItems && !draftHasItems) {
+                        setItems(initialData.items.map((it: any) => ({
+                            id: it.id || Math.random().toString(),
+                            name: it.name,
+                            price: it.price?.toString() || "0",
+                            quantity: it.quantity || 0,
+                            priority: it.priority || "Medium",
+                            buyerIds: it.item_buyers?.length > 0
+                                ? it.item_buyers.map((ib: any) => ib.buyer_id)
+                                : it.buyer ? [dbBuyers?.find(b => b.name.trim().toLowerCase() === it.buyer.trim().toLowerCase())?.id].filter(Boolean) as string[] : [],
+                            isWanted: it.is_wanted || false,
+                            tags: it.tags || []
+                        })));
+                    } else {
+                        setItems(d.items);
+                    }
                 } catch (e) {
                     console.error("Draft parse error", e);
                 }
@@ -126,12 +148,15 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                         price: it.price?.toString() || "0",
                         quantity: it.quantity || 0,
                         priority: it.priority || "Medium",
-                        buyer: it.buyer || globalSettings?.defaultBuyer || "",
+                        buyerIds: it.item_buyers?.length > 0
+                            ? it.item_buyers.map((ib: any) => ib.buyer_id)
+                            : it.buyer ? [dbBuyers?.find(b => b.name.trim().toLowerCase() === it.buyer.trim().toLowerCase())?.id].filter(Boolean) as string[] : [],
                         isWanted: it.is_wanted || false,
                         tags: it.tags || []
                     })));
                 } else {
-                    setItems([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: globalSettings?.defaultBuyer || "", isWanted: false, tags: [] }]);
+                    const defaultBuyerId = dbBuyers?.find(b => b.name === globalSettings?.defaultBuyer)?.id;
+                    setItems([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyerIds: defaultBuyerId ? [defaultBuyerId] : [], isWanted: false, tags: [] }]);
                 }
             }
         } else {
@@ -161,11 +186,13 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                 setLocation("");
                 setPriceListImages([""]);
                 setXUrl("");
-                setItems([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: globalSettings?.defaultBuyer || "", isWanted: false, tags: [] }]);
+                const defaultBuyerId = dbBuyers?.find(b => b.name === globalSettings?.defaultBuyer)?.id;
+                setItems([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyerIds: defaultBuyerId ? [defaultBuyerId] : [], isWanted: false, tags: [] }]);
             }
         }
         setIsInitialized(true);
     }, [initialData, isOpen]);
+
 
     const handleFetch = async () => {
         const validImages = priceListImages.filter(img => img.trim() !== "");
@@ -209,10 +236,16 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
             setCircleName(data.circle?.name || "");
             setArtist(data.circle?.artist || "");
             setDay(data.circle?.day || "1");
-            const area = data.circle?.area || "";
-            const block = data.circle?.block || "";
-            const sn = data.circle?.space_number || "";
-            setLocation(`${area}${block}-${sn}`.replace(/^-|-$/, ""));
+
+            // Prefer formatted_location from AI if it exists
+            if (data.circle?.formatted_location) {
+                setLocation(data.circle.formatted_location);
+            } else {
+                const area = data.circle?.area || "";
+                const block = data.circle?.block || "";
+                const sn = data.circle?.space_number || "";
+                setLocation(standardizeLocation(area, block, sn));
+            }
 
             if (data.items && data.items.length > 0) {
                 setItems(data.items.map((it: any) => ({
@@ -221,7 +254,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                     price: it.price?.toString() || "0",
                     quantity: 0,
                     priority: it.priority || "Medium",
-                    buyer: globalSettings?.defaultBuyer || "",
+                    buyerIds: [],
                     isWanted: false,
                     tags: []
                 })));
@@ -248,7 +281,8 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
     };
 
     const addItem = () => {
-        setItems([...items, { id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyer: globalSettings?.defaultBuyer || "", isWanted: false, tags: [] }]);
+        const defaultBuyerId = dbBuyers?.find(b => b.name === globalSettings?.defaultBuyer)?.id;
+        setItems([...items, { id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyerIds: defaultBuyerId ? [defaultBuyerId] : [], isWanted: false, tags: [] }]);
     };
 
     const removeItem = (index: number) => {
@@ -258,6 +292,17 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
     const handleItemChange = (index: number, field: string, value: any) => {
         const newItems = [...items];
         (newItems[index] as any)[field] = value;
+        setItems(newItems);
+    };
+
+    const toggleBuyer = (itemIndex: number, buyerId: string) => {
+        const newItems = [...items];
+        const currentBuyers = newItems[itemIndex].buyerIds || [];
+        if (currentBuyers.includes(buyerId)) {
+            newItems[itemIndex].buyerIds = currentBuyers.filter((id: string) => id !== buyerId);
+        } else {
+            newItems[itemIndex].buyerIds = [...currentBuyers, buyerId];
+        }
         setItems(newItems);
     };
 
@@ -285,7 +330,9 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
         setLoading(true);
         try {
             // 1. Upsert Circle
-            const locMatch = location.match(/^(東|西|East|West)?([A-Z])?-?(.*)/i);
+            const formatted_location = standardizeLocation("", "", location);
+
+            const locMatch = location.match(/^(東|西|南|East|West)?([A-Z])?-?(.*)/i);
             const area = locMatch?.[1] || "";
             const block = locMatch?.[2] || "";
             const space_number = locMatch?.[3] || location;
@@ -302,6 +349,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                         area,
                         block,
                         space_number,
+                        formatted_location,
                         map_url: priceListImages[0] || "",
                         image_urls: priceListImages.filter(img => img.trim() !== ""), // Update all images
                         x_url: xUrl
@@ -319,6 +367,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                         area,
                         block,
                         space_number,
+                        formatted_location,
                         map_url: priceListImages[0] || "",
                         image_urls: priceListImages.filter(img => img.trim() !== ""), // Save all images
                         x_url: xUrl
@@ -343,9 +392,11 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                     price: parseInt(it.price) || 0,
                     quantity: it.quantity || 0,
                     priority: it.priority || "Medium",
-                    buyer: it.buyer || "",
                     is_wanted: it.isWanted || false,
-                    tags: it.tags || []
+                    tags: it.tags || [],
+                    buyer: it.buyerIds && it.buyerIds.length > 0
+                        ? dbBuyers?.find(b => b.id === it.buyerIds[0])?.name || ""
+                        : ""
                 }));
 
             if (itemsToInsert.length === 0) {
@@ -355,23 +406,51 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                     price: 0,
                     quantity: 1,
                     priority: "Medium",
-                    buyer: "",
                     is_wanted: false,
-                    tags: []
+                    tags: [],
+                    buyer: ""
                 });
             }
 
-            const { error: itemsError } = await supabase
+            const { data: insertedItems, error: itemsError } = await supabase
                 .from("items")
-                .insert(itemsToInsert);
+                .insert(itemsToInsert)
+                .select();
 
             if (itemsError) throw itemsError;
+
+            // 3. Upsert item_buyers
+            const itemBuyersToInsert: any[] = [];
+            insertedItems.forEach((insertedItem, idx) => {
+                const originalItem = items.filter(it => it.name.trim() !== "")[idx] || (itemsToInsert.length === 1 ? items[0] : null);
+                // Condition 1: Only save if quantity > 0
+                if (originalItem && originalItem.quantity > 0 && originalItem.buyerIds && originalItem.buyerIds.length > 0) {
+                    originalItem.buyerIds.forEach((bId: string) => {
+                        itemBuyersToInsert.push({
+                            item_id: insertedItem.id,
+                            buyer_id: bId
+                        });
+                    });
+                }
+            });
+
+            if (itemBuyersToInsert.length > 0) {
+                const { error: ibError } = await supabase
+                    .from("item_buyers")
+                    .insert(itemBuyersToInsert);
+                if (ibError) throw ibError;
+            }
 
             if (initialData?.scraped_id) {
                 await supabase
                     .from("scraped_posts")
                     .update({ is_read: true })
                     .eq("id", initialData.scraped_id);
+                localStorage.removeItem(`draft_scraped_${initialData.scraped_id}`);
+            } else if (initialData?.id) {
+                localStorage.removeItem(`draft_edit_${initialData.id}`);
+            } else {
+                localStorage.removeItem("draft_manual");
             }
 
             onSuccess();
@@ -494,8 +573,14 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                                     </select>
                                 </div>
                                 <div className={styles.inputGroup}>
-                                    <label>Location (e.g., 東1-ア-74a)</label>
-                                    <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="glass" />
+                                    <input
+                                        type="text"
+                                        value={location}
+                                        onChange={(e) => setLocation(e.target.value)}
+                                        onBlur={(e) => setLocation(standardizeLocation("", "", e.target.value))}
+                                        placeholder="東あ-01a"
+                                        className="glass"
+                                    />
                                 </div>
                             </div>
 
@@ -579,7 +664,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                             <div className={styles.itemsScrollContainer}>
                                 <div className={styles.itemsList}>
                                     {items.map((item, index) => (
-                                        <div className={`${styles.itemRow} glass`}>
+                                        <div key={item.id} className={`${styles.itemRow} glass`}>
                                             <div className={styles.itemMainRow}>
                                                 <input
                                                     type="checkbox"
@@ -622,21 +707,21 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                                                         <option value="Low">低</option>
                                                     </select>
                                                 </div>
-                                                <div className={styles.assignWrapper}>
-                                                    <select
-                                                        value={item.buyer}
-                                                        onChange={(e) => handleItemChange(index, "buyer", e.target.value)}
-                                                        className={styles.itemBuyerSelect}
-                                                    >
-                                                        <option value="">Assign...</option>
-                                                        {globalSettings?.buyerList?.map((b: string) => (
-                                                            <option key={b} value={b}>{b}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
                                                 <button className={styles.removeBtn} onClick={() => removeItem(index)}>
                                                     <Trash2 size={16} />
                                                 </button>
+                                            </div>
+
+                                            <div className={styles.buyerChipContainer}>
+                                                {dbBuyers?.map(buyer => (
+                                                    <div
+                                                        key={buyer.id}
+                                                        className={`${styles.buyerChip} ${(item.buyerIds || []).includes(buyer.id) ? styles.active : ""}`}
+                                                        onClick={() => toggleBuyer(index, buyer.id)}
+                                                    >
+                                                        {buyer.name}
+                                                    </div>
+                                                ))}
                                             </div>
 
                                             <div className={styles.tagContainer}>

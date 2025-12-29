@@ -5,11 +5,12 @@ import ImageLightbox from "./ImageLightbox";
 
 interface ArtistCardProps {
     circle: any;
-    onEdit: () => void;
+    onEdit: (step?: 1 | 2) => void;
     onDelete: (id: string) => void;
+    variant?: "card" | "row";
 }
 
-export default function ArtistCard({ circle, onEdit, onDelete }: ArtistCardProps) {
+export default function ArtistCard({ circle, onEdit, onDelete, variant = "card" }: ArtistCardProps) {
     const [view, setView] = useState<"image" | "list">("image");
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
     const [contentHeight, setContentHeight] = useState<number | undefined>(undefined);
@@ -20,14 +21,73 @@ export default function ArtistCard({ circle, onEdit, onDelete }: ArtistCardProps
         setContentHeight(e.currentTarget.offsetHeight);
     };
 
+    if (variant === "row") {
+        return (
+            <div className={`${styles.rowCard} glass-card`}>
+                <div className={styles.rowThumb} onClick={() => circle.map_url && setIsLightboxOpen(true)}>
+                    {circle.map_url ? (
+                        <img src={circle.map_url} alt="Circle" className={styles.rowPreview} />
+                    ) : (
+                        <div className={styles.rowPlaceholder}>
+                            <ImageIcon size={20} className="muted" />
+                        </div>
+                    )}
+                </div>
+
+                <div className={styles.rowMain}>
+                    <div className={styles.rowInfo}>
+                        {circle.x_url ? (
+                            <h3 className={styles.rowArtistName}>
+                                <a href={circle.x_url} target="_blank" rel="noopener noreferrer" className={styles.artistLink}>
+                                    {circle.artist}
+                                </a>
+                            </h3>
+                        ) : (
+                            <h3 className={styles.rowArtistName}>{circle.artist}</h3>
+                        )}
+                        {circle.name && <p className={styles.rowCircleName}>{circle.name}</p>}
+                    </div>
+                </div>
+
+                <div className={styles.rowRight}>
+                    <div className={styles.rowLocationBadge}>
+                        <MapPin size={12} />
+                        <span>{circle.day}日目 {circle.formatted_location || `${circle.area}${circle.block}-${circle.space_number}`}</span>
+                    </div>
+                    <div className={styles.rowActions}>
+                        <button className={styles.rowEditBtn} onClick={() => onEdit(1)}>
+                            <Edit2 size={16} />
+                            <span>Edit</span>
+                        </button>
+                        <button className={styles.rowBuyBtn} onClick={() => onEdit(2)}>
+                            <ShoppingCart size={16} />
+                            <span>Buy</span>
+                        </button>
+                        <button className={styles.rowDeleteBtn} onClick={() => onDelete(circle.id)}>
+                            <Trash2 size={16} />
+                        </button>
+                    </div>
+                </div>
+
+                <ImageLightbox
+                    isOpen={isLightboxOpen}
+                    imageUrls={images}
+                    onClose={() => setIsLightboxOpen(false)}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className={`${styles.card} glass-card`}>
             <div className={styles.header}>
                 <div className={styles.artistInfo}>
                     {circle.x_url ? (
-                        <a href={circle.x_url} target="_blank" rel="noopener noreferrer" className={styles.artistLink}>
-                            <h3 className={styles.artistName}>{circle.artist}</h3>
-                        </a>
+                        <h3 className={styles.artistName}>
+                            <a href={circle.x_url} target="_blank" rel="noopener noreferrer" className={styles.artistLink}>
+                                {circle.artist}
+                            </a>
+                        </h3>
                     ) : (
                         <h3 className={styles.artistName}>{circle.artist}</h3>
                     )}
@@ -35,7 +95,7 @@ export default function ArtistCard({ circle, onEdit, onDelete }: ArtistCardProps
                 </div>
                 <div className={styles.locationBadge}>
                     <MapPin size={12} />
-                    <span>{circle.day}日目 {circle.area}{circle.block}-{circle.space_number}</span>
+                    <span>{circle.day}日目 {circle.formatted_location || `${circle.area}${circle.block}-${circle.space_number}`}</span>
                 </div>
             </div>
 
@@ -90,9 +150,13 @@ export default function ArtistCard({ circle, onEdit, onDelete }: ArtistCardProps
                     </button>
                 </div>
                 <div className={styles.actions}>
-                    <button className={styles.editBtn} onClick={onEdit}>
+                    <button className={styles.editBtn} onClick={() => onEdit(1)}>
                         <Edit2 size={16} />
-                        <span>Edit / Buy</span>
+                        <span>Edit</span>
+                    </button>
+                    <button className={styles.buyBtn} onClick={() => onEdit(2)}>
+                        <ShoppingCart size={16} />
+                        <span>Buy</span>
                     </button>
                     <button className={styles.deleteBtn} onClick={() => onDelete(circle.id)}>
                         <Trash2 size={16} />

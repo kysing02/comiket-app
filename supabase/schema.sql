@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS circles (
     map_url TEXT,
     image_urls TEXT[], -- Array of image URLs (price list images)
     x_url TEXT,
+    formatted_location TEXT, -- Standardized location format: (東|西|南)(Block)-(SpaceNumber)(Suffix)
     is_deleted BOOLEAN DEFAULT FALSE
 );
 
@@ -45,13 +46,33 @@ CREATE TABLE IF NOT EXISTS scraped_posts (
     raw_data JSONB
 );
 
+-- Create a table for buyers
+CREATE TABLE IF NOT EXISTS buyers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    name TEXT UNIQUE NOT NULL
+);
+
+-- Create a table for item_buyers (junction table for many-to-many relationship)
+CREATE TABLE IF NOT EXISTS item_buyers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    item_id UUID REFERENCES items(id) ON DELETE CASCADE NOT NULL,
+    buyer_id UUID REFERENCES buyers(id) ON DELETE CASCADE NOT NULL,
+    UNIQUE(item_id, buyer_id)
+);
+
 -- RLS (Row Level Security) - Simplified for now as it's for private use
 -- In a real app, you'd add policies here.
 ALTER TABLE circles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scraped_posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE buyers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE item_buyers ENABLE ROW LEVEL SECURITY;
 
 -- Allow all for authenticated users (or public if you want shared access without login for now)
 CREATE POLICY "Public Read/Write Access" ON circles FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Read/Write Access" ON items FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Read/Write Access" ON scraped_posts FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public Read/Write Access" ON buyers FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public Read/Write Access" ON item_buyers FOR ALL USING (true) WITH CHECK (true);

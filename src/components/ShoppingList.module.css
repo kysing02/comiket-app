@@ -56,8 +56,17 @@
 }
 
 .searchWrapper {
-    width: 100%;
+    width: calc(100% + 1.5rem);
+    margin-left: -0.75rem;
+    margin-right: -0.75rem;
     margin-bottom: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10, 10, 11, 0.9);
+    backdrop-filter: blur(20px);
+    padding: 1rem 0.75rem;
+    border-bottom: 1px solid var(--glass-border);
 }
 
 .searchBox {
@@ -192,12 +201,28 @@
 
 
 .list {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr;
     gap: 0.5rem;
-    /* Reduced gap */
     width: 100%;
-    /* Ensure it takes full width */
+}
+
+@media (min-width: 1200px) {
+    .list {
+        grid-template-columns: repeat(2, 1fr);
+        max-width: 1400px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+@media (min-width: 1800px) {
+    .list {
+        grid-template-columns: repeat(3, 1fr);
+        max-width: 2000px;
+        margin-left: auto;
+        margin-right: auto;
+    }
 }
 
 .tableRow {
@@ -228,8 +253,7 @@
 .mobileMeta {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    margin-top: 4px;
+    gap: 0.5rem;
 }
 
 .mobileQty {
@@ -276,6 +300,12 @@
     font-size: 0.65rem;
     font-weight: 800;
     text-transform: uppercase;
+}
+
+.mobileBuyerContainer {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 /* Columns - Adjusted Widths */
@@ -338,17 +368,31 @@
 
 .itemLine {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
     width: 100%;
 }
 
-.itemName {
-    font-size: 1rem;
-    font-weight: 700;
-    color: white;
-    line-height: 1.2;
+.itemMainInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.itemMetadata {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.metadataGroup {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
 }
 
 .itemPrice {
@@ -356,15 +400,6 @@
     font-weight: 700;
     color: var(--secondary);
     white-space: nowrap;
-}
-
-.priceLine {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    width: 100%;
-    margin-top: 0.25rem;
-    justify-content: flex-start;
 }
 
 .priceGroup {

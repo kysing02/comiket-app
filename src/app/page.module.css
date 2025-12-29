@@ -84,6 +84,7 @@
   padding: 1rem 5px;
   /* Precisely 5px horizontal padding */
   padding-bottom: 120px;
+  padding-top: 0;
   /* Space for FAB and Nav */
   width: 100%;
   margin: 0 auto;
@@ -368,24 +369,95 @@
   gap: 0.5rem;
 }
 
-.artistFeed {
+.artistGrid {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
   width: 100%;
 }
 
+@media (min-width: 800px) {
+  .artistGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 2rem;
+  }
+}
+
+.artistList {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+@media (min-width: 1200px) {
+  .artistList {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 1400px;
+  }
+}
+
+@media (min-width: 1800px) {
+  .artistList {
+    grid-template-columns: repeat(3, 1fr);
+    max-width: 2000px;
+  }
+}
+
 .feedSearchWrapper {
+  position: sticky;
+  top: 0; /* Hit the top of contentScroll */
+  z-index: 100;
+  background: rgba(10, 10, 11, 0.9);
+  backdrop-filter: blur(20px);
   margin-bottom: 1.5rem;
-  padding: 0 0.75rem;
+  margin-left: -5px;
+  margin-right: -5px;
+  padding: 0.75rem 0.75rem;
+  width: calc(100% + 10px);
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.viewToggle {
+  display: flex;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+}
+
+.toggleBtn {
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.toggleBtn.active {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 4px 12px var(--primary-glow);
 }
 
 .searchBox {
   position: relative;
   display: flex;
   align-items: center;
+  flex: 1;
   max-width: 600px;
-  margin: 0 auto;
 }
 
 .searchIcon {
@@ -411,14 +483,6 @@
   outline: none;
 }
 
-@media (min-width: 800px) {
-  .artistFeed {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 2rem;
-    width: 100%;
-  }
-}
 
 .scrapedSection {
   width: 100%;

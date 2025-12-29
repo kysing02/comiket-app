@@ -19,7 +19,15 @@ export async function POST(req: Request) {
       
       Return ONLY a JSON object:
       {
-        "circle": { "name": "...", "artist": "...", "day": "1|2", "area": "東|西", "block": "1|2|3|4|5|6|7", "space_number": "..." },
+        "circle": {
+          "name": "...",
+          "artist": "...",
+          "day": "1|2",
+          "area": "東|西|南",
+          "block": "...",
+          "space_number": "...",
+          "formatted_location": "(Area)(Block)-(Number)(Suffix) (e.g. 東あ-25ab)"
+        },
         "items": [ ${includeItems ? `{ "name": "...", "price": 0, "priority": "Medium" }` : ``} ]
       }
     `;

@@ -584,6 +584,36 @@
     background-size: 1rem;
 }
 
+.buyerChipContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+    margin-left: 25px;
+}
+
+.buyerChip {
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: var(--muted);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.buyerChip:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.buyerChip.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    box-shadow: 0 0 8px var(--primary-glow);
+}
+
 /* Tag Styles */
 .tagContainer {
     display: flex;

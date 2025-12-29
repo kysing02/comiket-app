@@ -8,12 +8,13 @@ import ImageLightbox from "./ImageLightbox";
 
 interface ShoppingListProps {
     items: any[];
-    onUpdate: () => void;
+    onUpdate: (silent?: boolean) => void;
     onEditCircle: (circle: any, step?: 1 | 2) => void;
 }
 
 export default function ShoppingList({ items, onUpdate, onEditCircle }: ShoppingListProps) {
     const [filterDay, setFilterDay] = useState<string | null>(null);
+    const [filterArea, setFilterArea] = useState<string | null>(null); // New: Area filter (東, 西)
     const [filterPriority, setFilterPriority] = useState<string[]>([]); // Array for multiple selection
     const [filterTags, setFilterTags] = useState<string[]>([]); // Array of color hexes
     const [searchQuery, setSearchQuery] = useState("");
@@ -21,15 +22,25 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxImages, setLightboxImages] = useState<string[]>([]);
 
-    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'circle', direction: 'asc' });
+
+    const [localPurchased, setLocalPurchased] = useState<Record<string, boolean>>({});
 
     const togglePurchased = async (itemId: string, currentStatus: boolean) => {
+        const optimisticStatus = !currentStatus;
+        setLocalPurchased(prev => ({ ...prev, [itemId]: optimisticStatus }));
+
         const { error } = await supabase
             .from("items")
-            .update({ is_purchased: !currentStatus })
+            .update({ is_purchased: optimisticStatus })
             .eq("id", itemId);
 
-        if (!error) onUpdate();
+        if (error) {
+            setLocalPurchased(prev => ({ ...prev, [itemId]: currentStatus }));
+            console.error("Failed to update status", error);
+        } else {
+            onUpdate(true); // Silent refresh
+        }
     };
 
     const togglePriorityFilter = (priority: string) => {
@@ -71,9 +82,20 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
                     bVal = b.is_purchased ? 1 : 0;
                     break;
                 case 'circle': // Sort by Day then Space
-                    aVal = `${a.circles?.day}-${a.circles?.area}-${a.circles?.block}-${a.circles?.space_number}`;
-                    bVal = `${b.circles?.day}-${b.circles?.area}-${b.circles?.block}-${b.circles?.space_number}`;
+                    aVal = `${a.circles?.day || "9"}-${a.circles?.formatted_location || ""}`;
+                    bVal = `${b.circles?.day || "9"}-${b.circles?.formatted_location || ""}`;
                     break;
+                case 'gojuon': // Sort by 東 あ-わ -> 西 あ-わ -> A-Z
+                    const getSortKey = (item: any) => {
+                        const areaOrder = item.circles?.area === "東" ? "1" : (item.circles?.area === "西" ? "2" : "3");
+                        // localeCompare with 'ja' handles phonetic sorting for Japanese
+                        return `${areaOrder}-${item.circles?.name || ""}`;
+                    };
+                    aVal = getSortKey(a);
+                    bVal = getSortKey(b);
+                    // Always use localeCompare for strings in gojuon mode
+                    const result = aVal.localeCompare(bVal, 'ja');
+                    return sortConfig.direction === 'asc' ? result : -result;
                 case 'price':
                     aVal = a.price || 0;
                     bVal = b.price || 0;
@@ -98,15 +120,23 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
     };
 
     const filteredItems = items.filter(it => {
+        // Show item if it has a multi-buyer assignment OR a legacy buyer string
+        const hasNewAssignment = it.item_buyers && it.item_buyers.length > 0;
+        const hasLegacyAssignment = it.buyer && it.buyer.trim() !== "";
+        const hasBuyerAssignment = hasNewAssignment || hasLegacyAssignment;
+
+        if (!hasBuyerAssignment) return false;
+
         if ((it.quantity || 0) <= 0) return false; // Hide 0 qty items
         const dayMatch = !filterDay || it.circles?.day === filterDay;
+        const areaMatch = !filterArea || it.circles?.area === filterArea;
         const priorityMatch = filterPriority.length === 0 || filterPriority.includes(it.priority);
         const tagMatch = filterTags.length === 0 || filterTags.some(t => it.tags?.includes(t));
         const searchMatch = !searchQuery ||
             it.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             it.circles?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             it.circles?.artist?.toLowerCase().includes(searchQuery.toLowerCase());
-        return dayMatch && priorityMatch && tagMatch && searchMatch;
+        return dayMatch && areaMatch && priorityMatch && tagMatch && searchMatch;
     });
 
     const sortedItems = getSortedItems(filteredItems);
@@ -143,11 +173,13 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
 
     const handleDelete = async (id: string, name: string) => {
         if (!confirm(`Remove "${name}" from Shopping List? (Sets quantity to 0)`)) return;
+
+        // Optimistic update would be nice, but silent refresh is also fine as requested
         const { error } = await supabase.from("items").update({ quantity: 0 }).eq("id", id);
         if (error) {
             console.error("Failed to update item", error);
         } else {
-            onUpdate();
+            onUpdate(true); // Silent refresh
         }
     };
 
@@ -158,6 +190,20 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
 
     return (
         <div className={styles.container}>
+            {/* Search Box */}
+            <div className={styles.searchWrapper}>
+                <div className={styles.searchBox}>
+                    <Search size={16} className={styles.searchIcon} />
+                    <input
+                        type="text"
+                        placeholder="Search items, circles, or artists..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="glass"
+                    />
+                </div>
+            </div>
+
             {/* Stats Bar */}
             <div className={`${styles.stats} glass-card`}>
                 <div className={styles.statGroup}>
@@ -174,20 +220,6 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
                 </div>
             </div>
 
-            {/* Search Box */}
-            <div className={styles.searchWrapper}>
-                <div className={styles.searchBox}>
-                    <Search size={16} className={styles.searchIcon} />
-                    <input
-                        type="text"
-                        placeholder="Search items, circles, or artists..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="glass"
-                    />
-                </div>
-            </div>
-
             {/* Filter Controls */}
             <div className={styles.controls}>
                 <div className={styles.filterRow}>
@@ -195,6 +227,12 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
                     <button className={`${styles.pill} ${!filterDay ? styles.active : ""}`} onClick={() => setFilterDay(null)}>All</button>
                     <button className={`${styles.pill} ${filterDay === "1" ? styles.active : ""}`} onClick={() => setFilterDay("1")}>Day 1</button>
                     <button className={`${styles.pill} ${filterDay === "2" ? styles.active : ""}`} onClick={() => setFilterDay("2")}>Day 2</button>
+                </div>
+                <div className={styles.filterRow}>
+                    <span className={styles.filterLabel}><MapPin size={12} /> Area:</span>
+                    <button className={`${styles.pill} ${!filterArea ? styles.active : ""}`} onClick={() => setFilterArea(null)}>All</button>
+                    <button className={`${styles.pill} ${filterArea === "東" ? styles.active : ""}`} onClick={() => setFilterArea("東")}>東 (East)</button>
+                    <button className={`${styles.pill} ${filterArea === "西" ? styles.active : ""}`} onClick={() => setFilterArea("西")}>西 (West)</button>
                 </div>
                 <div className={styles.filterRow}>
                     <span className={styles.filterLabel}>Priority:</span>
@@ -232,8 +270,8 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
                     <div className={`${styles.colStatus} ${styles.sortable}`} onClick={() => handleSort('status')}>
                         Done <SortIcon column="status" />
                     </div>
-                    <div className={`${styles.colInfo} ${styles.sortable}`} onClick={() => handleSort('circle')}>
-                        Circle / Item <SortIcon column="circle" />
+                    <div className={`${styles.colInfo} ${styles.sortable}`} onClick={() => handleSort('gojuon')}>
+                        Circle / Item <SortIcon column="gojuon" />
                     </div>
                     <div className={styles.colAction}>Img</div>
                 </div>
@@ -260,10 +298,10 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
                             {/* 1. Status Checkbox */}
                             <div className={styles.colStatus}>
                                 <button
-                                    className={`${styles.checkbox} ${item.is_purchased ? styles.checked : ""}`}
-                                    onClick={() => togglePurchased(item.id, item.is_purchased)}
+                                    className={`${styles.checkbox} ${(localPurchased[item.id] ?? item.is_purchased) ? styles.checked : ""}`}
+                                    onClick={() => togglePurchased(item.id, localPurchased[item.id] ?? item.is_purchased)}
                                 >
-                                    {item.is_purchased && <Check size={16} />}
+                                    {(localPurchased[item.id] ?? item.is_purchased) && <Check size={16} />}
                                 </button>
                             </div>
 
@@ -271,13 +309,13 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
                             <div className={styles.colInfo}>
                                 <div className={styles.circleLine}>
                                     <span className={styles.locationBadge}>
-                                        {item.circles?.area}{item.circles?.block}-{item.circles?.space_number}
+                                        {item.circles?.formatted_location || `${item.circles?.area}${item.circles?.block}-${item.circles?.space_number}`}
                                     </span>
                                     <span className={styles.circleName}>{item.circles?.name}</span>
                                     <span className={styles.artistName}>@{item.circles?.artist}</span>
                                 </div>
                                 <div className={styles.itemLine}>
-                                    <div>
+                                    <div className={styles.itemMainInfo}>
                                         <span className={styles.itemName}>{item.name}</span>
                                         <div className={styles.tagContainer}>
                                             {item.tags?.map((color: string, idx: number) => (
@@ -285,8 +323,9 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
                                             ))}
                                         </div>
                                     </div>
-                                    <div className={styles.priceLine}>
-                                        <div className={styles.priceGroup}>
+
+                                    <div className={styles.itemMetadata}>
+                                        <div className={styles.metadataGroup}>
                                             <span className={styles.itemPrice}>¥{item.price?.toLocaleString()}</span>
                                             <button
                                                 className={styles.editBtn}
@@ -300,15 +339,30 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
                                             </button>
                                         </div>
 
-                                        {/* Mobile Metadata Row */}
-                                        <div className={styles.mobileMeta}>
+                                        <div className={styles.metadataGroup}>
                                             <span className={styles.mobileQty}>x{item.quantity || 1}</span>
                                             <span className={`${styles.mobilePriority} ${styles[item.priority?.toLowerCase()]}`}>
                                                 {item.priority?.substring(0, 3) || "Mid"}
                                             </span>
-                                            {item.buyer && (
-                                                <div className={styles.mobileBuyer}>
-                                                    {item.buyer.substring(0, 1)}
+                                            {(item.buyer || item.item_buyers?.length > 0) && (
+                                                <div className={styles.mobileBuyerContainer}>
+                                                    {item.item_buyers?.length > 0 ? (
+                                                        // Deduplicate by name to prevent "シ and シ" if same name exists twice
+                                                        Array.from(new Map(
+                                                            item.item_buyers
+                                                                .filter((ib: any) => ib.buyers?.name)
+                                                                .map((ib: any) => [ib.buyers.name, ib])
+                                                        ).values()).map((ib: any, idx: number) => (
+                                                            <div key={idx} className={styles.mobileBuyer} title={ib.buyers.name}>
+                                                                {ib.buyers.name.substring(0, 1) || "?"}
+                                                            </div>
+                                                        ))
+                                                    ) : item.buyer ? (
+                                                        /* Fallback for un-migrated items */
+                                                        <div className={styles.mobileBuyer} title={item.buyer}>
+                                                            {item.buyer.substring(0, 1)}
+                                                        </div>
+                                                    ) : null}
                                                 </div>
                                             )}
                                         </div>

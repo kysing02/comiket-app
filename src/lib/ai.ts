@@ -61,9 +61,10 @@ export async function extractComiketData(postText: string, imageUrls: string[]) 
         "name": "string",
         "artist": "string",
         "day": "1" | "2",
-        "area": "East" | "West",
+        "area": "東" | "西" | "南",
         "block": "string (e.g. A)",
-        "space": "string (e.g. 01a)"
+        "space": "string (e.g. 01a)",
+        "formatted_location": "string (e.g. 東あ-25ab)"
       },
       "items": [
         { "name": "string", "price": number }

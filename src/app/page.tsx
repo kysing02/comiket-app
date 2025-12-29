@@ -13,13 +13,16 @@ import {
   MapPin,
   Trash2,
   WifiOff,
-  Download
+  Download,
+  LayoutGrid,
+  LayoutList
 } from "lucide-react";
 import ShoppingList from "@/components/ShoppingList";
 import ArtistCard from "@/components/ArtistCard";
 import styles from "./page.module.css";
 import AddItemModal from "@/components/AddItemModal";
 import { supabase } from "@/lib/supabase";
+import { standardizeLocation } from "@/lib/location";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("feed");
@@ -29,6 +32,7 @@ export default function Home() {
   const [items, setItems] = useState<any[]>([]);
   const [circles, setCircles] = useState<any[]>([]);
   const [scrapedPosts, setScrapedPosts] = useState<any[]>([]);
+  const [dbBuyers, setDbBuyers] = useState<any[]>([]);
   /* Settings State */
   const [appSettings, setAppSettings] = useState<{
     aiModel: string;
@@ -42,6 +46,7 @@ export default function Home() {
     buyerList: ["Me", "Friend A", "Friend B"]
   });
   const [feedSearch, setFeedSearch] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isOffline, setIsOffline] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -62,6 +67,121 @@ export default function Home() {
       }
     }
   }, []);
+
+  const fetchBuyers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("buyers")
+        .select("*")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      setDbBuyers(data || []);
+      return data || [];
+    } catch (err) {
+      console.error("Error fetching buyers:", err);
+      return [];
+    }
+  };
+
+  /* Migration Logic */
+  useEffect(() => {
+    const migrateBuyers = async () => {
+      const currentDbBuyers = await fetchBuyers();
+      const savedSettings = localStorage.getItem("comiket_settings");
+      if (savedSettings) {
+        try {
+          const parsed = JSON.parse(savedSettings);
+          if (currentDbBuyers.length === 0 && parsed.buyerList && Array.isArray(parsed.buyerList) && parsed.buyerList.length > 0) {
+            console.log("Migrating buyers to database...");
+            const toInsert = parsed.buyerList.map((name: string) => ({ name }));
+            const { error } = await supabase.from("buyers").insert(toInsert);
+            if (!error) {
+              fetchBuyers();
+            }
+          }
+        } catch (e) {
+          console.error("Migration failed", e);
+        }
+      }
+    };
+    migrateBuyers();
+  }, []);
+
+  const migrateItemBuyers = async () => {
+    // Only migrate if we have both items and dbBuyers
+    if (items.length === 0 || dbBuyers.length === 0) return;
+
+    const toMigrate = items.filter(item =>
+      item.buyer &&
+      (!item.item_buyers || item.item_buyers.length === 0)
+    );
+
+    if (toMigrate.length === 0) return;
+
+    console.log(`Migrating ${toMigrate.length} items to item_buyers...`);
+
+    const insertions: any[] = [];
+    toMigrate.forEach(item => {
+      const buyer = dbBuyers.find(b =>
+        b.name.trim().toLowerCase() === item.buyer.trim().toLowerCase()
+      );
+      if (buyer) {
+        insertions.push({
+          item_id: item.id,
+          buyer_id: buyer.id
+        });
+      }
+    });
+
+    if (insertions.length > 0) {
+      const { error } = await supabase.from("item_buyers").insert(insertions);
+      if (!error) {
+        console.log("Successfully migrated items to item_buyers");
+        fetchItems(true); // Silent refresh
+      } else {
+        console.error("Failed to migrate items:", error);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (items.length > 0 && dbBuyers.length > 0) {
+      migrateItemBuyers();
+    }
+  }, [items.length, dbBuyers.length]);
+
+  /* Location Migration Logic */
+  const isMigrating = useRef(false);
+  useEffect(() => {
+    const migrateLocations = async () => {
+      if (circles.length === 0 || isMigrating.current) return;
+
+      const toMigrate = circles.filter(c => !c.formatted_location);
+      if (toMigrate.length === 0) return;
+
+      isMigrating.current = true;
+      console.log(`Migrating ${toMigrate.length} circles to standardized locations...`);
+
+      try {
+        for (const circle of toMigrate) {
+          const formatted = standardizeLocation(circle.area || "", circle.block || "", circle.space_number || "");
+          if (formatted) {
+            const { error } = await supabase
+              .from("circles")
+              .update({ formatted_location: formatted })
+              .eq("id", circle.id);
+            if (error) console.error(`Failed to migrate location for ${circle.artist}:`, error);
+          }
+        }
+      } finally {
+        isMigrating.current = false;
+        if (toMigrate.length > 0) {
+          fetchCircles(true);
+        }
+      }
+    };
+    migrateLocations();
+  }, [circles.length]);
 
   /* PWA/Offline Logic */
   useEffect(() => {
@@ -103,21 +223,20 @@ export default function Home() {
     localStorage.setItem("comiket_settings", JSON.stringify(newSettings));
   };
 
-  const addBuyer = () => {
-    const newBuyer = `Friend ${appSettings.buyerList.length + 1}`;
-    updateSetting("buyerList", [...appSettings.buyerList, newBuyer]);
+  const addBuyer = async () => {
+    const newBuyerName = `Friend ${dbBuyers.length + 1}`;
+    const { error } = await supabase.from("buyers").insert({ name: newBuyerName });
+    if (!error) fetchBuyers();
   };
 
-  const removeBuyer = (index: number) => {
-    const newList = [...appSettings.buyerList];
-    newList.splice(index, 1);
-    updateSetting("buyerList", newList);
+  const removeBuyer = async (id: string) => {
+    const { error } = await supabase.from("buyers").delete().eq("id", id);
+    if (!error) fetchBuyers();
   };
 
-  const updateBuyerName = (index: number, name: string) => {
-    const newList = [...appSettings.buyerList];
-    newList[index] = name;
-    updateSetting("buyerList", newList);
+  const updateBuyerName = async (id: string, name: string) => {
+    const { error } = await supabase.from("buyers").update({ name }).eq("id", id);
+    if (!error) fetchBuyers();
   };
 
   const handleTabClick = (tab: string) => {
@@ -137,14 +256,18 @@ export default function Home() {
 
   const [loading, setLoading] = useState(true);
 
-  const fetchItems = async () => {
-    setLoading(true);
+  const fetchItems = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const { data, error } = await supabase
         .from("items")
         .select(`
       *,
-      circles (*)
+      circles (*),
+      item_buyers (
+        buyer_id,
+        buyers (name)
+      )
       `)
         .order("created_at", { ascending: false });
 
@@ -153,19 +276,25 @@ export default function Home() {
     } catch (err: any) {
       console.error("Error fetching items:", err.message || err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
-  const fetchCircles = async () => {
+  const fetchCircles = async (silent = false) => {
     try {
       const { data, error } = await supabase
         .from("circles")
         .select(`
       *,
-      items (*)
+      items (
+        *,
+        item_buyers (
+          buyer_id,
+          buyers (name)
+        )
+      )
       `)
-        .order("created_at", { ascending: false });
+        .order("day", { ascending: true }).order("formatted_location", { ascending: true });
 
       if (error) throw error;
       setCircles(data || []);
@@ -174,7 +303,7 @@ export default function Home() {
     }
   };
 
-  const fetchScrapedPosts = async () => {
+  const fetchScrapedPosts = async (silent = false) => {
     try {
       const { data, error } = await supabase
         .from("scraped_posts")
@@ -216,8 +345,15 @@ export default function Home() {
   }, []);
 
   const handleMarkAsRead = async (postId: string) => {
-    await supabase.from("scraped_posts").update({ is_read: true }).eq("id", postId);
-    fetchScrapedPosts();
+    // Optimistic Update: Hide the post immediately
+    setScrapedPosts(prev => prev.filter(p => p.id !== postId));
+
+    const { error } = await supabase.from("scraped_posts").update({ is_read: true }).eq("id", postId);
+    if (error) {
+      // Re-fetch on error to ensure sync
+      fetchScrapedPosts(true);
+      console.error("Failed to mark as read", error);
+    }
   };
 
   const handleImportPost = (post: any) => {
@@ -271,19 +407,6 @@ export default function Home() {
 
       {/* Main Content Area */}
       <div className={styles.contentScroll} ref={scrollRef}>
-        <div className={styles.viewControls}>
-          <div className={`${styles.filterChip} glass`}>
-            <Filter size={14} />
-            <span>{activeTab === "feed" ? "Scraped Posts" : activeTab === "list" ? "My List" : activeTab === "settings" ? "Settings" : "Event Map"}</span>
-          </div>
-          {activeTab === "list" && (
-            <div className={`${styles.filterChip} glass`}>
-              <List size={14} />
-              <span>items</span>
-            </div>
-          )}
-        </div>
-
         <section className={styles.feedContainer}>
           {loading ? (
             <div className={styles.loadingWrapper}>
@@ -291,7 +414,34 @@ export default function Home() {
             </div>
           ) : activeTab === "list" ? (
             items.length > 0 ? (
-              <ShoppingList items={items} onUpdate={() => { fetchItems(); fetchCircles(); }} onEditCircle={(circle, step) => { setEditingCircle(circle); setModalStep(step || 1); setIsModalOpen(true); }} />
+              <ShoppingList
+                items={items}
+                onUpdate={(silent = false) => { fetchItems(silent); fetchCircles(silent); }}
+                onEditCircle={async (circle, step) => {
+                  // Ensure we have the full circle data including items
+                  let fullCircle = circles.find(c => c.id === circle.id);
+                  if (!fullCircle) {
+                    const { data } = await supabase
+                      .from("circles")
+                      .select(`
+                        *,
+                        items (
+                          *,
+                          item_buyers (
+                            buyer_id,
+                            buyers (name)
+                          )
+                        )
+                      `)
+                      .eq("id", circle.id)
+                      .single();
+                    if (data) fullCircle = data;
+                  }
+                  setEditingCircle(fullCircle || circle);
+                  setModalStep(step || 1);
+                  setIsModalOpen(true);
+                }}
+              />
             ) : (
               <div className={styles.emptyState}>
                 <div className={`${styles.emptyIcon} glass`}>
@@ -343,15 +493,15 @@ export default function Home() {
                   </button>
                 </div>
                 <div className={styles.buyerList}>
-                  {appSettings.buyerList.map((buyer, index) => (
-                    <div key={index} className={styles.buyerRow}>
+                  {dbBuyers.map((buyer) => (
+                    <div key={buyer.id} className={styles.buyerRow}>
                       <input
                         type="text"
-                        value={buyer}
-                        onChange={(e) => updateBuyerName(index, e.target.value)}
+                        value={buyer.name}
+                        onChange={(e) => updateBuyerName(buyer.id, e.target.value)}
                         className={styles.buyerInput}
                       />
-                      <button className={styles.removeBtn} onClick={() => removeBuyer(index)}>
+                      <button className={styles.removeBtn} onClick={() => removeBuyer(buyer.id)}>
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -365,8 +515,8 @@ export default function Home() {
                     className="glass"
                   >
                     <option value="">None (Select manually)</option>
-                    {appSettings.buyerList.map(b => (
-                      <option key={b} value={b}>{b}</option>
+                    {dbBuyers.map(b => (
+                      <option key={b.id} value={b.name}>{b.name}</option>
                     ))}
                   </select>
                 </div>
@@ -398,6 +548,22 @@ export default function Home() {
                     onChange={(e) => setFeedSearch(e.target.value)}
                     className="glass"
                   />
+                </div>
+                <div className={styles.viewToggle}>
+                  <button
+                    className={`${styles.toggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
+                    onClick={() => setViewMode('grid')}
+                    title="Grid View"
+                  >
+                    <LayoutGrid size={18} />
+                  </button>
+                  <button
+                    className={`${styles.toggleBtn} ${viewMode === 'list' ? styles.active : ''}`}
+                    onClick={() => setViewMode('list')}
+                    title="List View"
+                  >
+                    <LayoutList size={18} />
+                  </button>
                 </div>
               </div>
 
@@ -446,7 +612,7 @@ export default function Home() {
                   </section>
                 )}
 
-              <div className={styles.artistFeed}>
+              <div className={viewMode === "grid" ? styles.artistGrid : styles.artistList}>
                 {circles.filter(c => !feedSearch ||
                   c.name?.toLowerCase().includes(feedSearch.toLowerCase()) ||
                   c.artist?.toLowerCase().includes(feedSearch.toLowerCase())
@@ -458,8 +624,10 @@ export default function Home() {
                     <ArtistCard
                       key={circle.id}
                       circle={circle}
-                      onEdit={() => {
+                      variant={viewMode === "grid" ? "card" : "row"}
+                      onEdit={(step) => {
                         setEditingCircle(circle);
+                        setModalStep(step || 1);
                         setIsModalOpen(true);
                       }}
                       onDelete={handleDeleteCircle}
@@ -522,16 +690,19 @@ export default function Home() {
             initialData={editingCircle}
             initialStep={modalStep}
             globalSettings={appSettings}
+            dbBuyers={dbBuyers}
             onClose={() => {
               setIsModalOpen(false);
               setEditingCircle(null);
               setModalStep(1); // Reset
             }}
             onSuccess={() => {
-              fetchItems();
-              fetchCircles();
+              fetchCircles(true);
+              fetchItems(true);
               fetchScrapedPosts(); // Update inbox immediately
-              setActiveTab("feed"); // Redirect to Feed
+              setIsModalOpen(false);
+              setEditingCircle(null);
+              setModalStep(1);
             }}
           />
         )}
