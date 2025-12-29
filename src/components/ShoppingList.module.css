@@ -1,3 +1,13 @@
+/* Hide spin buttons for number inputs */
+.container :global(input[type=number]::-webkit-inner-spin-button),
+.container :global(input[type=number]::-webkit-outer-spin-button) {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.container :global(input[type=number]) {
+  -moz-appearance: textfield; /* Firefox */
+}
+
 .container {
     padding: 0 0 6rem 0;
     /* Removed horizontal padding for edge-to-edge mobile */
@@ -602,7 +612,7 @@
 
 /* 5. Action */
 .colAction {
-    width: 70px;
+    width: 40px;
     /* Widened for 2 buttons */
     display: flex;
     justify-content: center;
@@ -631,7 +641,7 @@
     border: none;
     color: var(--muted);
     cursor: pointer;
-    padding: 0.4rem;
+    padding: 0.2rem; /* Reduced padding */
     border-radius: 8px;
     display: flex;
     transition: all 0.2s;

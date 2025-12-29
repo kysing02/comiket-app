@@ -558,15 +558,59 @@
     align-items: center;
 }
 
-.itemQtyInput {
-    width: 44px;
-    padding: 0.25rem;
-    border-radius: 6px;
+/* Hide spin buttons for number inputs */
+/* Hide spin buttons for number inputs */
+.modal :global(input[type=number]::-webkit-inner-spin-button),
+.modal :global(input[type=number]::-webkit-outer-spin-button) {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.modal :global(input[type=number]) {
+  -moz-appearance: textfield; /* Firefox */
+}
+
+.qtyControl {
+    display: flex;
+    align-items: center;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--glass-border);
-    color: white;
+    border-radius: 8px;
+    padding: 2px;
+}
+
+.qtyBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--primary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.qtyBtn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.qtyBtn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.itemQtyInput {
+    width: 32px;
     text-align: center;
-    font-size: 0.8rem;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0;
+    pointer-events: none; /* Make strictly read-only visually */
 }
 
 /* Removed transition and appearance overrides to prevent layout shifts */

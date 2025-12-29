@@ -1,5 +1,5 @@
 import React from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, Plus, Minus } from "lucide-react";
 import styles from "../../AddItemModal.module.css";
 
 interface ItemRowProps {
@@ -39,15 +39,28 @@ export const ItemRow: React.FC<ItemRowProps> = ({
                         onChange={(e) => onItemChange(index, "price", e.target.value)}
                         className={styles.itemPriceInput}
                     />
-                    <div className={styles.qtyWrapper}>
+                    <div className={styles.qtyControl}>
+                        <button
+                            className={styles.qtyBtn}
+                            onClick={() => onItemChange(index, "quantity", Math.max(0, (item.quantity || 0) - 1))}
+                            disabled={(item.quantity || 0) <= 0}
+                        >
+                            <Minus size={12} />
+                        </button>
                         <input
                             type="number"
-                            placeholder="Qty"
+                            placeholder="0"
                             min="0"
                             value={item.quantity || 0}
-                            onChange={(e) => onItemChange(index, "quantity", parseInt(e.target.value))}
+                            readOnly
                             className={styles.itemQtyInput}
                         />
+                        <button
+                            className={styles.qtyBtn}
+                            onClick={() => onItemChange(index, "quantity", (item.quantity || 0) + 1)}
+                        >
+                            <Plus size={12} />
+                        </button>
                     </div>
                     <div className={styles.priorityWrapper}>
                         <select
