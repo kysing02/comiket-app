@@ -121,8 +121,11 @@ export default function ArtistCard({ circle, onEdit, onDelete, variant = "card" 
                                             onLoad={handleImageLoad}
                                             onClick={() => setIsLightboxOpen(true)}
                                             drag="x"
-                                            dragConstraints={{ left: 0, right: 0 }}
-                                            dragElastic={0.5}
+                                            dragConstraints={{
+                                                left: imageIndex === images.length - 1 ? 0 : -1,
+                                                right: imageIndex === 0 ? 0 : 1
+                                            }}
+                                            dragElastic={0.6}
                                             onDragEnd={(e, info) => {
                                                 const threshold = 50;
                                                 if (info.offset.x < -threshold) {

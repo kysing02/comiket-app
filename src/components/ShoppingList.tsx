@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Filter } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 import styles from "./ShoppingList.module.css";
 import { supabase } from "@/lib/supabase";
 import ImageLightbox from "./ImageLightbox";
 import { ShoppingStats } from "./ShoppingList/components/ShoppingStats";
-import { FilterControls } from "./ShoppingList/components/FilterControls";
+import { ShoppingListFilterModal } from "./ShoppingList/components/ShoppingListFilterModal";
 import { ShoppingItemRow } from "./ShoppingList/components/ShoppingItemRow";
 
 interface ShoppingListProps {
@@ -23,6 +23,7 @@ export default function ShoppingList({ items, onUpdate, onEditCircle, dbBuyers }
     const [filterTags, setFilterTags] = useState<string[]>([]); // Array of color hexes
     const [searchQuery, setSearchQuery] = useState("");
     const [filterBuyer, setFilterBuyer] = useState<string | null>(null);
+    const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
     // Lightbox State
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxImages, setLightboxImages] = useState<string[]>([]);
@@ -136,6 +137,7 @@ export default function ShoppingList({ items, onUpdate, onEditCircle, dbBuyers }
             it.circles?.artist?.toLowerCase().includes(searchQuery.toLowerCase());
 
         const buyerMatch = !filterBuyer ||
+            (filterBuyer === "None" && (!it.item_buyers || it.item_buyers.length === 0) && !it.buyer) ||
             (it.item_buyers?.some((ib: any) => ib.buyers?.name === filterBuyer)) ||
             (it.buyer === filterBuyer);
 
@@ -194,7 +196,37 @@ export default function ShoppingList({ items, onUpdate, onEditCircle, dbBuyers }
 
     return (
         <div className={styles.container}>
-            <FilterControls
+            <div className={styles.stickyHeader}>
+                <div className={styles.searchBarRow}>
+                    <div className={styles.searchBox}>
+                        <Search size={18} className={styles.searchIcon} />
+                        <input
+                            type="text"
+                            placeholder="Search items, circles..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    <button
+                        className={`${styles.filterBtn} ${filterDay || filterArea || filterPriority.length > 0 || filterTags.length > 0 || filterBuyer ? styles.hasFilters : ""}`}
+                        onClick={() => setIsFilterModalOpen(true)}
+                    >
+                        <Filter size={20} />
+                        {(filterDay || filterArea || filterPriority.length > 0 || filterTags.length > 0 || filterBuyer) && <span className={styles.filterDot} />}
+                    </button>
+                </div>
+
+                <ShoppingStats
+                    purchasedPrice={purchasedPrice}
+                    totalPrice={totalPrice}
+                    purchasedCount={purchasedCount}
+                    totalCount={totalCount}
+                />
+            </div>
+
+            <ShoppingListFilterModal
+                isOpen={isFilterModalOpen}
+                onClose={() => setIsFilterModalOpen(false)}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 filterDay={filterDay}
@@ -210,13 +242,6 @@ export default function ShoppingList({ items, onUpdate, onEditCircle, dbBuyers }
                 dbBuyers={dbBuyers}
                 filterBuyer={filterBuyer}
                 setFilterBuyer={setFilterBuyer}
-            />
-
-            <ShoppingStats
-                purchasedPrice={purchasedPrice}
-                totalPrice={totalPrice}
-                purchasedCount={purchasedCount}
-                totalCount={totalCount}
             />
 
             {/* Table Container for Scroll */}

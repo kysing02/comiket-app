@@ -17,6 +17,7 @@ export default function ImageLightbox({ isOpen, imageUrls = [], initialIndex = 0
     const [mounted, setMounted] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [scale, setScale] = useState(1);
+    const [prevDist, setPrevDist] = useState(0);
     const [imgSize, setImgSize] = useState({ width: 0, height: 0 });
     const [viewport, setViewport] = useState({ width: 0, height: 0 });
     const lastTap = useRef(0);
@@ -63,6 +64,27 @@ export default function ImageLightbox({ isOpen, imageUrls = [], initialIndex = 0
             const newScale = prev - (delta > 0 ? zoomStep : -zoomStep);
             return Math.max(1, Math.min(newScale, 5));
         });
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (e.touches.length === 2) {
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            const dist = Math.hypot(touch1.pageX - touch2.pageX, touch1.pageY - touch2.pageY);
+
+            if (prevDist > 0) {
+                const diff = dist - prevDist;
+                setScale((prev) => {
+                    const newScale = prev + diff * 0.01;
+                    return Math.max(1, Math.min(newScale, 5));
+                });
+            }
+            setPrevDist(dist);
+        }
+    };
+
+    const handleTouchEnd = () => {
+        setPrevDist(0);
     };
 
     const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -139,6 +161,8 @@ export default function ImageLightbox({ isOpen, imageUrls = [], initialIndex = 0
                     className={styles.overlay}
                     onClick={onClose}
                     onWheel={handleWheel}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
                 >
                     <button className={styles.closeBtn} onClick={onClose}>
                         <X size={28} />

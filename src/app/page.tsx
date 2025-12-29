@@ -526,12 +526,14 @@ export default function Home() {
               updateBuyerName={updateBuyerName}
             />
           ) : activeTab === "map" ? (
-            <div className={styles.emptyState}>
-              <div className={`${styles.emptyIcon} glass`}>
-                <MapPin size={48} className={styles.mutedIcon} />
+            <div className={styles.mapPlaceholderWrapper}>
+              <div className={styles.emptyState}>
+                <div className={`${styles.emptyIcon} glass`}>
+                  <MapPin size={48} className={styles.mutedIcon} />
+                </div>
+                <h2>Map View</h2>
+                <p>Circle location visualization coming soon...</p>
               </div>
-              <h2>Map View</h2>
-              <p>Circle location visualization coming soon...</p>
             </div>
           ) : (
             <FeedTab
