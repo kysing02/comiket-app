@@ -136,7 +136,6 @@
   flex-direction: column;
   align-items: stretch;
   /* Stretch children (like ShoppingList) to full width */
-  overflow-x: hidden;
   max-width: 100%;
 }
 
@@ -412,11 +411,11 @@
 
 .feedSearchWrapper {
   position: sticky;
-  top: 0; /* Hit the top of contentScroll */
-  z-index: 100;
-  background: rgba(10, 10, 11, 0.9);
+  top: 0;
+  z-index: 10;
+  background: var(--background);
   backdrop-filter: blur(20px);
-  margin-bottom: 0.5rem; /* Reduced to provide internal padding space */
+  margin-bottom: 0.5rem;
   margin-left: -5px;
   margin-right: -5px;
   padding: 0.75rem 0.75rem;

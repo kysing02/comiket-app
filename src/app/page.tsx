@@ -2,30 +2,28 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Search,
-  List,
-  Plus,
-  ShoppingBag,
-  Compass,
-  Settings,
-  Filter,
-  MapPin,
-  Trash2,
-  WifiOff,
-  Download,
-  LayoutGrid,
-  LayoutList
-} from "lucide-react";
+import { MapPin, ShoppingBag } from "lucide-react";
 import ShoppingList from "@/components/ShoppingList";
-import ArtistCard from "@/components/ArtistCard";
 import styles from "./page.module.css";
 import AddItemModal from "@/components/AddItemModal";
 import { supabase } from "@/lib/supabase";
 import { standardizeLocation } from "@/lib/location";
+import { Header } from "./components/Header";
+import { BottomNav } from "./components/BottomNav";
+import { FeedTab } from "./components/FeedTab";
+import { SettingsTab } from "./components/SettingsTab";
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState("feed");
+  const [activeTab, setActiveTabState] = useState("feed");
+
+  // Custom setter to save to localStorage
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("activeTab", tab);
+    }
+  };
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCircle, setEditingCircle] = useState<any>(null);
   const [modalStep, setModalStep] = useState<1 | 2>(1);
@@ -49,6 +47,7 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isOffline, setIsOffline] = useState(false);
+  const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   /* Load Settings from LocalStorage */
@@ -149,6 +148,52 @@ export default function Home() {
       migrateItemBuyers();
     }
   }, [items.length, dbBuyers.length]);
+
+  // Restore tab from localStorage on mount
+  useEffect(() => {
+    const savedTab = localStorage.getItem("activeTab");
+    if (savedTab) {
+      setActiveTabState(savedTab);
+    }
+  }, []);
+
+
+  // Save scroll position per tab
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const positions = JSON.parse(localStorage.getItem("scrollPositions") || "{}");
+      positions[activeTab] = container.scrollTop;
+      localStorage.setItem("scrollPositions", JSON.stringify(positions));
+    };
+
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [activeTab]);
+
+  // Restore scroll position when tab changes
+  useEffect(() => {
+    const savedScrolls = localStorage.getItem("scrollPositions");
+    if (savedScrolls && scrollRef.current) {
+      try {
+        const positions = JSON.parse(savedScrolls);
+        if (positions[activeTab] !== undefined) {
+          // Small delay to ensure tab content is swapped
+          setTimeout(() => {
+            if (scrollRef.current) {
+              scrollRef.current.scrollTop = positions[activeTab];
+            }
+          }, 50);
+        } else {
+          scrollRef.current.scrollTop = 0;
+        }
+      } catch (e) {
+        console.error("Failed to restore scroll position", e);
+      }
+    }
+  }, [activeTab]);
 
   /* Location Migration Logic */
   const isMigrating = useRef(false);
@@ -254,7 +299,30 @@ export default function Home() {
 
   // ... existing fetch logic ...
 
-  const [loading, setLoading] = useState(true);
+
+
+  // Restore scroll position ONLY after loading is finished and tab is set
+  useEffect(() => {
+    if (loading) return;
+
+    const savedScrolls = localStorage.getItem("scrollPositions");
+    if (savedScrolls && scrollRef.current) {
+      try {
+        const positions = JSON.parse(savedScrolls);
+        if (positions[activeTab]) {
+          // Wait for one frame to ensure children are rendered
+          const timer = setTimeout(() => {
+            if (scrollRef.current) {
+              scrollRef.current.scrollTop = positions[activeTab];
+            }
+          }, 50);
+          return () => clearTimeout(timer);
+        }
+      } catch (e) {
+        console.error("Failed to parse scroll positions", e);
+      }
+    }
+  }, [loading, activeTab]);
 
   const fetchItems = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -382,28 +450,12 @@ export default function Home() {
 
   return (
     <div className={styles.dashboard}>
-      {/* Top Header */}
-      <header className={`${styles.header} glass`}>
-        <div className={styles.headerContent}>
-          <h1>C107 <span className={styles.textGradient}>Tracker</span></h1>
-          <div className={styles.headerActions}>
-            {isOffline && (
-              <div className={styles.offlineBadge} title="Offline Mode">
-                <WifiOff size={16} />
-                <span>Offline</span>
-              </div>
-            )}
-            {deferredPrompt && (
-              <button className={`${styles.iconBtn} ${styles.installBtn}`} onClick={handleInstallClick}>
-                <Download size={20} />
-              </button>
-            )}
-            <button className={styles.iconBtn} onClick={() => setActiveTab("settings")}>
-              <Settings size={20} />
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header
+        isOffline={isOffline}
+        deferredPrompt={deferredPrompt}
+        handleInstallClick={handleInstallClick}
+        onOpenSettings={() => setActiveTab("settings")}
+      />
 
       {/* Main Content Area */}
       <div className={styles.contentScroll} ref={scrollRef}>
@@ -416,10 +468,13 @@ export default function Home() {
             items.length > 0 ? (
               <ShoppingList
                 items={items}
-                onUpdate={(silent = false) => { fetchItems(silent); fetchCircles(silent); }}
+                onUpdate={(silent = false) => {
+                  fetchItems(silent);
+                  fetchCircles(silent);
+                }}
                 onEditCircle={async (circle, step) => {
                   // Ensure we have the full circle data including items
-                  let fullCircle = circles.find(c => c.id === circle.id);
+                  let fullCircle = circles.find((c) => c.id === circle.id);
                   if (!fullCircle) {
                     const { data } = await supabase
                       .from("circles")
@@ -449,84 +504,26 @@ export default function Home() {
                 </div>
                 <h2>No items yet</h2>
                 <p>Select items to buy from the feed</p>
-                <button className={styles.primaryBtn} onClick={() => { setEditingCircle(null); setIsModalOpen(true); }}>
+                <button
+                  className={styles.primaryBtn}
+                  onClick={() => {
+                    setEditingCircle(null);
+                    setIsModalOpen(true);
+                  }}
+                >
                   Add Item Manually
                 </button>
               </div>
             )
           ) : activeTab === "settings" ? (
-            <div className={styles.settingsArea}>
-              <h2 className={styles.sectionTitle}>App Settings</h2>
-
-              <div className={`${styles.settingsGroup} glass`}>
-                <h3>AI & OCR Configuration</h3>
-                <div className={styles.settingItem}>
-                  <label>AI Model</label>
-                  <select
-                    value={appSettings.aiModel}
-                    onChange={(e) => updateSetting("aiModel", e.target.value)}
-                    className="glass"
-                  >
-                    <option value="gpt-4o-mini">GPT-4o mini (Current)</option>
-                    <option value="gemini-3-flash-preview">Gemini 3.0 Flash Preview</option>
-                  </select>
-                </div>
-                <div className={styles.settingItem}>
-                  <label>OCR Method</label>
-                  <select
-                    value={appSettings.ocrMethod}
-                    onChange={(e) => updateSetting("ocrMethod", e.target.value)}
-                    className="glass"
-                  >
-                    <option value="combined">Tesseract + AI (Recommended)</option>
-                    <option value="vision">Vision Only (Fastest)</option>
-                    <option value="tesseract">Tesseract Only (Local)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className={`${styles.settingsGroup} glass`}>
-                <div className={styles.groupHeader}>
-                  <h3>Buyer Management</h3>
-                  <button className={styles.iconBtnSmall} onClick={addBuyer}>
-                    <Plus size={16} /> Add
-                  </button>
-                </div>
-                <div className={styles.buyerList}>
-                  {dbBuyers.map((buyer) => (
-                    <div key={buyer.id} className={styles.buyerRow}>
-                      <input
-                        type="text"
-                        value={buyer.name}
-                        onChange={(e) => updateBuyerName(buyer.id, e.target.value)}
-                        className={styles.buyerInput}
-                      />
-                      <button className={styles.removeBtn} onClick={() => removeBuyer(buyer.id)}>
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className={styles.settingItem}>
-                  <label>Default Buyer (Auto-fill)</label>
-                  <select
-                    value={appSettings.defaultBuyer}
-                    onChange={(e) => updateSetting("defaultBuyer", e.target.value)}
-                    className="glass"
-                  >
-                    <option value="">None (Select manually)</option>
-                    {dbBuyers.map(b => (
-                      <option key={b.id} value={b.name}>{b.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className={styles.settingsFooter}>
-                <p>Comiket C107 Tracker v0.5.1</p>
-                <p>All data is synced to Supabase</p>
-              </div>
-            </div>
+            <SettingsTab
+              appSettings={appSettings}
+              updateSetting={updateSetting}
+              dbBuyers={dbBuyers}
+              addBuyer={addBuyer}
+              removeBuyer={removeBuyer}
+              updateBuyerName={updateBuyerName}
+            />
           ) : activeTab === "map" ? (
             <div className={styles.emptyState}>
               <div className={`${styles.emptyIcon} glass`}>
@@ -536,153 +533,35 @@ export default function Home() {
               <p>Circle location visualization coming soon...</p>
             </div>
           ) : (
-            /* New Feed Tab: Registered Artists & Scraped Inbox */
-            <div className={styles.feedScrollArea}>
-              <div className={styles.feedSearchWrapper}>
-                <div className={styles.searchBox}>
-                  <Search size={18} className={styles.searchIcon} />
-                  <input
-                    type="text"
-                    placeholder="Search artist, circle, or content..."
-                    value={feedSearch}
-                    onChange={(e) => setFeedSearch(e.target.value)}
-                    className="glass"
-                  />
-                </div>
-                <div className={styles.viewToggle}>
-                  <button
-                    className={`${styles.toggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
-                    onClick={() => setViewMode('grid')}
-                    title="Grid View"
-                  >
-                    <LayoutGrid size={18} />
-                  </button>
-                  <button
-                    className={`${styles.toggleBtn} ${viewMode === 'list' ? styles.active : ''}`}
-                    onClick={() => setViewMode('list')}
-                    title="List View"
-                  >
-                    <LayoutList size={18} />
-                  </button>
-                </div>
-              </div>
-
-              {scrapedPosts.filter(p => !feedSearch ||
-                p.content?.toLowerCase().includes(feedSearch.toLowerCase()) ||
-                p.username?.toLowerCase().includes(feedSearch.toLowerCase())
-              ).length > 0 && (
-                  <section className={styles.scrapedSection}>
-                    <h3 className={styles.sectionTitle}>Inbox: Scraped from X ({scrapedPosts.filter(p => !feedSearch || p.content?.toLowerCase().includes(feedSearch.toLowerCase()) || p.username?.toLowerCase().includes(feedSearch.toLowerCase())).length})</h3>
-                    <div className={styles.scrapedGrid}>
-                      {scrapedPosts.filter(p => !feedSearch ||
-                        p.content?.toLowerCase().includes(feedSearch.toLowerCase()) ||
-                        p.username?.toLowerCase().includes(feedSearch.toLowerCase())
-                      ).map((post) => (
-                        <div key={post.id} className={`${styles.scrapedCard} glass`}>
-                          <div className={styles.scrapedHeader}>
-                            <span className={styles.scrapedArtist}>{post.username || "X Post"}</span>
-                          </div>
-                          <div className={styles.scrapedContent}>
-                            <p>{post.content}</p>
-                            {post.image_urls?.length > 0 && (
-                              <div className={styles.scrapedImages}>
-                                {post.image_urls.slice(0, 4).map((img: string, i: number) => (
-                                  <img key={i} src={img} alt="Preview" />
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div className={styles.scrapedActions}>
-                            <button
-                              className={styles.ignoreBtn}
-                              onClick={() => handleMarkAsRead(post.id)}
-                            >
-                              Ignore
-                            </button>
-                            <button
-                              className={styles.importBtn}
-                              onClick={() => handleImportPost(post)}
-                            >
-                              Import
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-              <div className={viewMode === "grid" ? styles.artistGrid : styles.artistList}>
-                {circles.filter(c => !feedSearch ||
-                  c.name?.toLowerCase().includes(feedSearch.toLowerCase()) ||
-                  c.artist?.toLowerCase().includes(feedSearch.toLowerCase())
-                ).length > 0 ? (
-                  circles.filter(c => !feedSearch ||
-                    c.name?.toLowerCase().includes(feedSearch.toLowerCase()) ||
-                    c.artist?.toLowerCase().includes(feedSearch.toLowerCase())
-                  ).map((circle) => (
-                    <ArtistCard
-                      key={circle.id}
-                      circle={circle}
-                      variant={viewMode === "grid" ? "card" : "row"}
-                      onEdit={(step) => {
-                        setEditingCircle(circle);
-                        setModalStep(step || 1);
-                        setIsModalOpen(true);
-                      }}
-                      onDelete={handleDeleteCircle}
-                    />
-                  ))
-                ) : (
-                  <div className={styles.emptyState}>
-                    <div className={`${styles.emptyIcon} glass`}>
-                      <Compass size={48} className={styles.mutedIcon} />
-                    </div>
-                    <h2>Feed is empty</h2>
-                    <p>Register artists via X Scraper or "+" button</p>
-                  </div>
-                )}
-              </div>
-            </div>
+            <FeedTab
+              feedSearch={feedSearch}
+              setFeedSearch={setFeedSearch}
+              viewMode={viewMode}
+              setViewMode={setViewMode}
+              scrapedPosts={scrapedPosts}
+              handleMarkAsRead={handleMarkAsRead}
+              handleImportPost={handleImportPost}
+              circles={circles}
+              onEditCircle={(circle, step) => {
+                setEditingCircle(circle);
+                setModalStep(step || 1);
+                setIsModalOpen(true);
+              }}
+              onDeleteCircle={handleDeleteCircle}
+            />
           )}
         </section>
       </div>
 
-      {/* Bottom Navigation */}
-      <nav className={styles.bottomNav}>
-        <button
-          className={activeTab === "feed" ? styles.active : ""}
-          onClick={() => handleTabClick("feed")}
-        >
-          <Compass size={22} />
-          <span>Feed</span>
-        </button>
-        <button
-          className={activeTab === "list" ? styles.active : ""}
-          onClick={() => handleTabClick("list")}
-        >
-          <ShoppingBag size={22} />
-          <span>List</span>
-        </button>
-        <div style={{ width: "60px" }}></div>
-        <button
-          className={activeTab === "map" ? styles.active : ""}
-          onClick={() => handleTabClick("map")}
-        >
-          <MapPin size={22} />
-          <span>Map</span>
-        </button>
-        <button
-          className={activeTab === "settings" ? styles.active : ""}
-          onClick={() => handleTabClick("settings")}
-        >
-          <Settings size={22} />
-          <span>Settings</span>
-        </button>
-        <button className={styles.fab} onClick={() => { setEditingCircle(null); setIsModalOpen(true); }} title="Add Item">
-          <Plus size={32} />
-        </button>
-      </nav>
+      <BottomNav
+        activeTab={activeTab}
+        onTabClick={handleTabClick}
+        onAddClick={() => {
+          setEditingCircle(null);
+          setIsModalOpen(true);
+        }}
+      />
+
       <AnimatePresence>
         {isModalOpen && (
           <AddItemModal

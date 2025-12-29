@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Check, User, MapPin, Image as ImageIcon, Filter, Trash2, Search, Edit2 } from "lucide-react";
+import { Filter } from "lucide-react";
 import styles from "./ShoppingList.module.css";
 import { supabase } from "@/lib/supabase";
 import ImageLightbox from "./ImageLightbox";
+import { ShoppingStats } from "./ShoppingList/components/ShoppingStats";
+import { FilterControls } from "./ShoppingList/components/FilterControls";
+import { ShoppingItemRow } from "./ShoppingList/components/ShoppingItemRow";
 
 interface ShoppingListProps {
     items: any[];
@@ -120,13 +123,6 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
     };
 
     const filteredItems = items.filter(it => {
-        // Show item if it has a multi-buyer assignment OR a legacy buyer string
-        const hasNewAssignment = it.item_buyers && it.item_buyers.length > 0;
-        const hasLegacyAssignment = it.buyer && it.buyer.trim() !== "";
-        const hasBuyerAssignment = hasNewAssignment || hasLegacyAssignment;
-
-        if (!hasBuyerAssignment) return false;
-
         if ((it.quantity || 0) <= 0) return false; // Hide 0 qty items
         const dayMatch = !filterDay || it.circles?.day === filterDay;
         const areaMatch = !filterArea || it.circles?.area === filterArea;
@@ -188,80 +184,30 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
         return <span className={styles.sortIcon}>{sortConfig.direction === 'asc' ? '▲' : '▼'}</span>;
     };
 
+
     return (
         <div className={styles.container}>
-            {/* Search Box */}
-            <div className={styles.searchWrapper}>
-                <div className={styles.searchBox}>
-                    <Search size={16} className={styles.searchIcon} />
-                    <input
-                        type="text"
-                        placeholder="Search items, circles, or artists..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="glass"
-                    />
-                </div>
-            </div>
+            <FilterControls
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                filterDay={filterDay}
+                setFilterDay={setFilterDay}
+                filterArea={filterArea}
+                setFilterArea={setFilterArea}
+                filterPriority={filterPriority}
+                togglePriorityFilter={togglePriorityFilter}
+                clearPriorityFilter={clearPriorityFilter}
+                filterTags={filterTags}
+                toggleTagFilter={toggleTagFilter}
+                clearTagFilter={clearTagFilter}
+            />
 
-            {/* Stats Bar */}
-            <div className={`${styles.stats} glass-card`}>
-                <div className={styles.statGroup}>
-                    <div className={styles.statLabel}>Budget Used</div>
-                    <div className={styles.statValue}>
-                        ¥{purchasedPrice.toLocaleString()} <span className={styles.statTotal}>/ ¥{totalPrice.toLocaleString()}</span>
-                    </div>
-                </div>
-                <div className={styles.statGroup}>
-                    <div className={styles.statLabel}>Progress</div>
-                    <div className={styles.statValue}>
-                        {purchasedCount} <span className={styles.statTotal}>/ {totalCount} items</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Filter Controls */}
-            <div className={styles.controls}>
-                <div className={styles.filterRow}>
-                    <span className={styles.filterLabel}><Filter size={12} /> Day:</span>
-                    <button className={`${styles.pill} ${!filterDay ? styles.active : ""}`} onClick={() => setFilterDay(null)}>All</button>
-                    <button className={`${styles.pill} ${filterDay === "1" ? styles.active : ""}`} onClick={() => setFilterDay("1")}>Day 1</button>
-                    <button className={`${styles.pill} ${filterDay === "2" ? styles.active : ""}`} onClick={() => setFilterDay("2")}>Day 2</button>
-                </div>
-                <div className={styles.filterRow}>
-                    <span className={styles.filterLabel}><MapPin size={12} /> Area:</span>
-                    <button className={`${styles.pill} ${!filterArea ? styles.active : ""}`} onClick={() => setFilterArea(null)}>All</button>
-                    <button className={`${styles.pill} ${filterArea === "東" ? styles.active : ""}`} onClick={() => setFilterArea("東")}>東 (East)</button>
-                    <button className={`${styles.pill} ${filterArea === "西" ? styles.active : ""}`} onClick={() => setFilterArea("西")}>西 (West)</button>
-                </div>
-                <div className={styles.filterRow}>
-                    <span className={styles.filterLabel}>Priority:</span>
-                    <button className={`${styles.pill} ${filterPriority.length === 0 ? styles.active : ""}`} onClick={clearPriorityFilter}>All</button>
-                    {["High", "Medium", "Low"].map(p => (
-                        <button
-                            key={p}
-                            className={`${styles.pill} ${filterPriority.includes(p) ? styles.active : ""}`}
-                            onClick={() => togglePriorityFilter(p)}
-                        >
-                            {p}
-                        </button>
-                    ))}
-                </div>
-                <div className={styles.filterRow}>
-                    <span className={styles.filterLabel}>Tag:</span>
-                    <button className={`${styles.pill} ${filterTags.length === 0 ? styles.active : ""}`} onClick={clearTagFilter}>All</button>
-                    <div style={{ display: 'flex', gap: '8px', marginLeft: '4px' }}>
-                        {['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6', '#6b7280'].map(c => (
-                            <div
-                                key={c}
-                                className={`${styles.colorPill} ${filterTags.includes(c) ? styles.active : ""}`}
-                                style={{ backgroundColor: c, color: c }}
-                                onClick={() => toggleTagFilter(c)}
-                            />
-                        ))}
-                    </div>
-                </div>
-            </div>
+            <ShoppingStats
+                purchasedPrice={purchasedPrice}
+                totalPrice={totalPrice}
+                purchasedCount={purchasedCount}
+                totalCount={totalCount}
+            />
 
             {/* Table Container for Scroll */}
             <div className={styles.tableScroll}>
@@ -279,111 +225,15 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
                 {/* Table Rows */}
                 <div className={styles.list}>
                     {sortedItems.map((item) => (
-                        <div
+                        <ShoppingItemRow
                             key={item.id}
-                            className={`${styles.tableRow} ${item.is_purchased ? styles.purchasedRow : ""} glass-card`}
-                            onClick={(e) => {
-                                // Don't trigger if clicked on checkbox, image button, or delete button
-                                const target = e.target as HTMLElement;
-                                if (target.closest(`.${styles.checkbox}`) ||
-                                    target.closest(`.${styles.imgBtn}`) ||
-                                    target.closest(`.${styles.deleteBtn}`)) {
-                                    return;
-                                }
-                                if (item.image_url || item.circles?.image_urls || item.circles?.map_url) {
-                                    openLightbox(item.image_url, item.circles?.image_urls, item.circles?.map_url);
-                                }
-                            }}
-                        >
-                            {/* 1. Status Checkbox */}
-                            <div className={styles.colStatus}>
-                                <button
-                                    className={`${styles.checkbox} ${(localPurchased[item.id] ?? item.is_purchased) ? styles.checked : ""}`}
-                                    onClick={() => togglePurchased(item.id, localPurchased[item.id] ?? item.is_purchased)}
-                                >
-                                    {(localPurchased[item.id] ?? item.is_purchased) && <Check size={16} />}
-                                </button>
-                            </div>
-
-                            {/* 2. Main Info (Circle & Item) */}
-                            <div className={styles.colInfo}>
-                                <div className={styles.circleLine}>
-                                    <span className={styles.locationBadge}>
-                                        {item.circles?.formatted_location || `${item.circles?.area}${item.circles?.block}-${item.circles?.space_number}`}
-                                    </span>
-                                    <span className={styles.circleName}>{item.circles?.name}</span>
-                                    <span className={styles.artistName}>@{item.circles?.artist}</span>
-                                </div>
-                                <div className={styles.itemLine}>
-                                    <div className={styles.itemMainInfo}>
-                                        <span className={styles.itemName}>{item.name}</span>
-                                        <div className={styles.tagContainer}>
-                                            {item.tags?.map((color: string, idx: number) => (
-                                                <span key={idx} className={styles.tagDot} style={{ backgroundColor: color }} />
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className={styles.itemMetadata}>
-                                        <div className={styles.metadataGroup}>
-                                            <span className={styles.itemPrice}>¥{item.price?.toLocaleString()}</span>
-                                            <button
-                                                className={styles.editBtn}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onEditCircle(item.circles, 2);
-                                                }}
-                                                title="Edit Circle/Items"
-                                            >
-                                                <Edit2 size={14} />
-                                            </button>
-                                        </div>
-
-                                        <div className={styles.metadataGroup}>
-                                            <span className={styles.mobileQty}>x{item.quantity || 1}</span>
-                                            <span className={`${styles.mobilePriority} ${styles[item.priority?.toLowerCase()]}`}>
-                                                {item.priority?.substring(0, 3) || "Mid"}
-                                            </span>
-                                            {(item.buyer || item.item_buyers?.length > 0) && (
-                                                <div className={styles.mobileBuyerContainer}>
-                                                    {item.item_buyers?.length > 0 ? (
-                                                        // Deduplicate by name to prevent "シ and シ" if same name exists twice
-                                                        Array.from(new Map(
-                                                            item.item_buyers
-                                                                .filter((ib: any) => ib.buyers?.name)
-                                                                .map((ib: any) => [ib.buyers.name, ib])
-                                                        ).values()).map((ib: any, idx: number) => (
-                                                            <div key={idx} className={styles.mobileBuyer} title={ib.buyers.name}>
-                                                                {ib.buyers.name.substring(0, 1) || "?"}
-                                                            </div>
-                                                        ))
-                                                    ) : item.buyer ? (
-                                                        /* Fallback for un-migrated items */
-                                                        <div className={styles.mobileBuyer} title={item.buyer}>
-                                                            {item.buyer.substring(0, 1)}
-                                                        </div>
-                                                    ) : null}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* 5. Image & Delete Action */}
-                            <div className={styles.colAction}>
-                                {item.image_url ? (
-                                    <button className={styles.imgBtn} onClick={() => openLightbox(item.image_url, item.circles?.image_urls, item.circles?.map_url)}>
-                                        <ImageIcon size={18} />
-                                    </button>
-                                ) : (
-                                    <span className={styles.noImg}></span>
-                                )}
-                                <button className={styles.deleteBtn} onClick={() => handleDelete(item.id, item.name)}>
-                                    <Trash2 size={16} />
-                                </button>
-                            </div>
-                        </div>
+                            item={item}
+                            localPurchased={localPurchased}
+                            togglePurchased={togglePurchased}
+                            openLightbox={openLightbox}
+                            onEditCircle={onEditCircle}
+                            handleDelete={handleDelete}
+                        />
                     ))}
 
                     {filteredItems.length === 0 && (

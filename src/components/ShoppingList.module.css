@@ -65,8 +65,8 @@
     margin-right: -0.75rem;
     position: sticky;
     top: 0;
-    z-index: 100;
-    background: rgba(10, 10, 11, 0.9);
+    z-index: 10;
+    background: var(--background);
     backdrop-filter: blur(20px);
     padding: 0.75rem;
     display: flex;

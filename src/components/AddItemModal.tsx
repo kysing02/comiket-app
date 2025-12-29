@@ -8,6 +8,9 @@ import { supabase } from "@/lib/supabase";
 import { performOCR } from "@/lib/ai";
 import { standardizeLocation } from "@/lib/location";
 import ImageLightbox from "./ImageLightbox";
+import { AISettings } from "./AddItemModal/components/AISettings";
+import { ArtistInfoForm } from "./AddItemModal/components/ArtistInfoForm";
+import { ItemListSection } from "./AddItemModal/components/ItemListSection";
 
 interface AddItemModalProps {
     isOpen: boolean;
@@ -394,7 +397,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                     priority: it.priority || "Medium",
                     is_wanted: it.isWanted || false,
                     tags: it.tags || [],
-                    buyer: it.buyerIds && it.buyerIds.length > 0
+                    buyer: (it.buyerIds && it.buyerIds.length > 0)
                         ? dbBuyers?.find(b => b.id === it.buyerIds[0])?.name || ""
                         : ""
                 }));
@@ -515,228 +518,47 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                                 </div>
 
                                 <AnimatePresence>
-                                    {showSettings && (
-                                        <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: "auto", opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            className={styles.settingsPanel}
-                                        >
-                                            <div className={styles.settingField}>
-                                                <label>AI Model</label>
-                                                <select value={aiModel} onChange={(e: any) => setAiModel(e.target.value)} className="glass">
-                                                    <option value="gpt-4o-mini">GPT-4o mini</option>
-                                                    <option value="gemini-3-flash-preview">Gemini 3 Flash Preview</option>
-                                                </select>
-                                            </div>
-                                            <div className={styles.settingField}>
-                                                <label>Extraction Method</label>
-                                                <select value={ocrMethod} onChange={(e: any) => setOcrMethod(e.target.value)} className="glass">
-                                                    <option value="combined">OCR Text + AI (Reliable)</option>
-                                                    <option value="vision">Vision Direct (Smart)</option>
-                                                </select>
-                                            </div>
-                                            <div className={styles.settingField}>
-                                                <label>Extract Items (Menu)</label>
-                                                <div className={styles.toggleWrapper}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={extractItems}
-                                                        onChange={(e) => setExtractItems(e.target.checked)}
-                                                        id="extractItemsToggle"
-                                                    />
-                                                    <label htmlFor="extractItemsToggle">Enable (Slower but detailed)</label>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    )}
+                                    <AISettings
+                                        showSettings={showSettings}
+                                        aiModel={aiModel}
+                                        setAiModel={setAiModel}
+                                        ocrMethod={ocrMethod}
+                                        setOcrMethod={setOcrMethod}
+                                        extractItems={extractItems}
+                                        setExtractItems={setExtractItems}
+                                    />
                                 </AnimatePresence>
                             </div>
 
-                            <div className={styles.grid2}>
-                                <div className={styles.inputGroup}>
-                                    <label>Artist Name *</label>
-                                    <input type="text" value={artist} onChange={(e) => setArtist(e.target.value)} className="glass" />
-                                </div>
-                                <div className={styles.inputGroup}>
-                                    <label>Circle Name</label>
-                                    <input type="text" value={circleName} onChange={(e) => setCircleName(e.target.value)} className="glass" />
-                                </div>
-                            </div>
-
-                            <div className={styles.grid2}>
-                                <div className={styles.inputGroup}>
-                                    <label>Day (C107)</label>
-                                    <select value={day} onChange={(e) => setDay(e.target.value)} className="glass">
-                                        <option value="1">1日目 - 12/30（火）</option>
-                                        <option value="2">2日目 - 12/31（水）</option>
-                                    </select>
-                                </div>
-                                <div className={styles.inputGroup}>
-                                    <input
-                                        type="text"
-                                        value={location}
-                                        onChange={(e) => setLocation(e.target.value)}
-                                        onBlur={(e) => setLocation(standardizeLocation("", "", e.target.value))}
-                                        placeholder="東あ-01a"
-                                        className="glass"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className={styles.inputGroup}>
-                                <div className={styles.labelRow}>
-                                    <label>Price List Images</label>
-                                    <div className={styles.labelActions}>
-                                        <span className={styles.labelHint}>Only the first image is auto-read. Add others manually!</span>
-                                        <button className={styles.addImgBtn} onClick={addPriceListImage}>
-                                            <Plus size={14} /> Add Image
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {priceListImages.map((imgUrl, idx) => (
-                                    <div key={idx} className={styles.imageInputRow}>
-                                        {imgUrl && (
-                                            <img
-                                                src={imgUrl}
-                                                className={styles.imageThumb}
-                                                alt={`Preview ${idx + 1}`}
-                                                onClick={() => { setLightboxImages([imgUrl]); setLightboxOpen(true); }}
-                                            />
-                                        )}
-                                        <div className={styles.imageInputWrapper}>
-                                            <input
-                                                type="text"
-                                                value={imgUrl}
-                                                onChange={(e) => {
-                                                    const newImages = [...priceListImages];
-                                                    newImages[idx] = e.target.value;
-                                                    setPriceListImages(newImages);
-                                                }}
-                                                placeholder={`Image URL ${idx + 1}`}
-                                                className="glass"
-                                            />
-                                            {imgUrl && (
-                                                <div className={styles.inputActionOverlay}>
-                                                    <button className={styles.previewBtn} onClick={() => { setLightboxImages([imgUrl]); setLightboxOpen(true); }} title="Preview">
-                                                        <ImageIcon size={14} />
-                                                    </button>
-                                                    <button className={styles.linkBtn} onClick={() => window.open(imgUrl, '_blank')} title="Open Layout">
-                                                        <LinkIcon size={14} />
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                        {priceListImages.length > 1 && (
-                                            <button
-                                                className={styles.removeImgBtn}
-                                                onClick={() => setPriceListImages(priceListImages.filter((_, i) => i !== idx))}
-                                                title="Remove"
-                                            >
-                                                <X size={16} />
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                            <ArtistInfoForm
+                                artist={artist}
+                                setArtist={setArtist}
+                                circleName={circleName}
+                                setCircleName={setCircleName}
+                                day={day}
+                                setDay={setDay}
+                                location={location}
+                                setLocation={setLocation}
+                                priceListImages={priceListImages}
+                                setPriceListImages={setPriceListImages}
+                                addPriceListImage={addPriceListImage}
+                                setLightboxOpen={setLightboxOpen}
+                                setLightboxImages={setLightboxImages}
+                            />
                         </div>
                     ) : (
-                        <div className={styles.itemsSection}>
-                            {/* Fixed Header with Price List Preview if available */}
-                            {/* Fixed Header with Price List Preview if available */}
-                            {priceListImages.length > 0 && priceListImages[0] && (
-                                <div className={styles.fixedPreview} onClick={() => { setLightboxImages(priceListImages); setLightboxOpen(true); }}>
-                                    <div className={styles.fixedPreviewInner}>
-                                        <img src={priceListImages[0]} alt="Reference" />
-                                        <span className={styles.previewHint}>Tap to Zoom ({priceListImages.length})</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className={styles.itemsHeader}>
-                                <h3>Items to Purchase</h3>
-                                <button className={styles.addItemBtn} onClick={addItem}>
-                                    <Plus size={16} /> Add
-                                </button>
-                            </div>
-
-                            <div className={styles.itemsScrollContainer}>
-                                <div className={styles.itemsList}>
-                                    {items.map((item, index) => (
-                                        <div key={item.id} className={`${styles.itemRow} glass`}>
-                                            <div className={styles.itemMainRow}>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Item Name"
-                                                    value={item.name}
-                                                    onChange={(e) => handleItemChange(index, "name", e.target.value)}
-                                                    className={styles.itemNameInput}
-                                                />
-                                                <div className={styles.itemMetaActions}>
-                                                    <input
-                                                        type="number"
-                                                        placeholder="¥"
-                                                        value={item.price}
-                                                        onChange={(e) => handleItemChange(index, "price", e.target.value)}
-                                                        className={styles.itemPriceInput}
-                                                    />
-                                                    <div className={styles.qtyWrapper}>
-                                                        <input
-                                                            type="number"
-                                                            placeholder="Qty"
-                                                            min="0"
-                                                            value={item.quantity || 0}
-                                                            onChange={(e) => handleItemChange(index, "quantity", parseInt(e.target.value))}
-                                                            className={styles.itemQtyInput}
-                                                        />
-                                                    </div>
-                                                    <div className={styles.priorityWrapper}>
-                                                        <select
-                                                            value={item.priority}
-                                                            onChange={(e) => handleItemChange(index, "priority", e.target.value)}
-                                                            className={styles.itemPrioritySelect}
-                                                        >
-                                                            <option value="High">高</option>
-                                                            <option value="Medium">中</option>
-                                                            <option value="Low">低</option>
-                                                        </select>
-                                                    </div>
-                                                    <button className={styles.removeBtn} onClick={() => removeItem(index)}>
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <div className={styles.buyerChipContainer}>
-                                                {dbBuyers?.map(buyer => (
-                                                    <div
-                                                        key={buyer.id}
-                                                        className={`${styles.buyerChip} ${(item.buyerIds || []).includes(buyer.id) ? styles.active : ""}`}
-                                                        onClick={() => toggleBuyer(index, buyer.id)}
-                                                    >
-                                                        {buyer.name}
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            <div className={styles.tagContainer}>
-                                                <div className={styles.colorSelector}>
-                                                    {['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6', '#6b7280'].map(c => (
-                                                        <div
-                                                            key={c}
-                                                            className={`${styles.colorDot} ${(item.tags || []).includes(c) ? styles.active : ""}`}
-                                                            style={{ backgroundColor: c, color: c }}
-                                                            onClick={() => toggleTag(index, c)}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
+                        <ItemListSection
+                            items={items}
+                            priceListImages={priceListImages}
+                            dbBuyers={dbBuyers || []}
+                            onItemChange={handleItemChange}
+                            onRemoveItem={removeItem}
+                            onToggleBuyer={toggleBuyer}
+                            onToggleTag={toggleTag}
+                            onAddItem={addItem}
+                            setLightboxOpen={setLightboxOpen}
+                            setLightboxImages={setLightboxImages}
+                        />
                     )}
                 </div>
 
