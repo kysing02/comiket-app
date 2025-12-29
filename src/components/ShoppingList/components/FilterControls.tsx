@@ -15,6 +15,9 @@ interface FilterControlsProps {
     filterTags: string[];
     toggleTagFilter: (color: string) => void;
     clearTagFilter: () => void;
+    dbBuyers: any[];
+    filterBuyer: string | null;
+    setFilterBuyer: (val: string | null) => void;
 }
 
 export const FilterControls: React.FC<FilterControlsProps> = ({
@@ -30,6 +33,9 @@ export const FilterControls: React.FC<FilterControlsProps> = ({
     filterTags,
     toggleTagFilter,
     clearTagFilter,
+    dbBuyers,
+    filterBuyer,
+    setFilterBuyer,
 }) => {
     return (
         <>
@@ -87,6 +93,19 @@ export const FilterControls: React.FC<FilterControlsProps> = ({
                             />
                         ))}
                     </div>
+                </div>
+                <div className={styles.filterRow}>
+                    <span className={styles.filterLabel}>Person:</span>
+                    <button className={`${styles.pill} ${!filterBuyer ? styles.active : ""}`} onClick={() => setFilterBuyer(null)}>All</button>
+                    {dbBuyers.map(b => (
+                        <button
+                            key={b.id}
+                            className={`${styles.pill} ${filterBuyer === b.name ? styles.active : ""}`}
+                            onClick={() => setFilterBuyer(b.name)}
+                        >
+                            {b.name}
+                        </button>
+                    ))}
                 </div>
             </div>
         </>

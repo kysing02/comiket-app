@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Image as ImageIcon, List as ListIcon, Edit2, ShoppingCart, Trash2 } from "lucide-react";
 import styles from "./ArtistCard.module.css";
 import ImageLightbox from "./ImageLightbox";
@@ -12,6 +13,7 @@ interface ArtistCardProps {
 
 export default function ArtistCard({ circle, onEdit, onDelete, variant = "card" }: ArtistCardProps) {
     const [view, setView] = useState<"image" | "list">("image");
+    const [imageIndex, setImageIndex] = useState(0);
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
     const [contentHeight, setContentHeight] = useState<number | undefined>(undefined);
     // Construct image array
@@ -106,14 +108,42 @@ export default function ArtistCard({ circle, onEdit, onDelete, variant = "card" 
                 }}
             >
                 {view === "image" ? (
-                    <div className={styles.imageWrapper} onClick={() => circle.map_url && setIsLightboxOpen(true)}>
+                    <div className={styles.imageWrapper}>
                         {circle.map_url ? (
-                            <img
-                                src={circle.map_url}
-                                alt="Price List"
-                                className={styles.priceListImage}
-                                onLoad={handleImageLoad}
-                            />
+                            <>
+                                <div className={styles.imageSwipeContainer}>
+                                    <AnimatePresence>
+                                        <motion.img
+                                            key={imageIndex}
+                                            src={images[imageIndex]}
+                                            alt="Price List"
+                                            className={styles.priceListImage}
+                                            onLoad={handleImageLoad}
+                                            onClick={() => setIsLightboxOpen(true)}
+                                            drag="x"
+                                            dragConstraints={{ left: 0, right: 0 }}
+                                            dragElastic={0.5}
+                                            onDragEnd={(e, info) => {
+                                                const threshold = 50;
+                                                if (info.offset.x < -threshold) {
+                                                    setImageIndex(prev => (prev < images.length - 1 ? prev + 1 : prev));
+                                                } else if (info.offset.x > threshold) {
+                                                    setImageIndex(prev => (prev > 0 ? prev - 1 : prev));
+                                                }
+                                            }}
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 0.15 }}
+                                        />
+                                    </AnimatePresence>
+                                </div>
+                                {images.length > 1 && (
+                                    <div className={styles.cardCounter}>
+                                        {imageIndex + 1} / {images.length}
+                                    </div>
+                                )}
+                            </>
                         ) : (
                             <div className={styles.placeholder}>
                                 <ImageIcon size={48} className="muted" />
@@ -167,6 +197,7 @@ export default function ArtistCard({ circle, onEdit, onDelete, variant = "card" 
             <ImageLightbox
                 isOpen={isLightboxOpen}
                 imageUrls={images}
+                initialIndex={imageIndex}
                 onClose={() => setIsLightboxOpen(false)}
             />
         </div>

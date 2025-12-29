@@ -1,14 +1,14 @@
 "use client";
 
-import { motion, AnimatePresence, useMotionValue, animate } from "framer-motion";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence, useMotionValue, animate, useTransform } from "framer-motion";
+import { X } from "lucide-react";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import styles from "./ImageLightbox.module.css";
 
 interface ImageLightboxProps {
     isOpen: boolean;
-    imageUrls: string[]; // Changed to array
+    imageUrls: string[];
     initialIndex?: number;
     onClose: () => void;
 }
@@ -17,18 +17,20 @@ export default function ImageLightbox({ isOpen, imageUrls = [], initialIndex = 0
     const [mounted, setMounted] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [scale, setScale] = useState(1);
-    const [prevDist, setPrevDist] = useState(0);
     const [imgSize, setImgSize] = useState({ width: 0, height: 0 });
     const [viewport, setViewport] = useState({ width: 0, height: 0 });
+    const lastTap = useRef(0);
 
     const x = useMotionValue(0);
     const y = useMotionValue(0);
     const imgRef = useRef<HTMLImageElement>(null);
 
-    // Sync index if initial changes (optional, mostly for single open)
     useEffect(() => {
         if (isOpen) {
             setCurrentIndex(initialIndex);
+            setScale(1);
+            x.set(0);
+            y.set(0);
         }
     }, [isOpen, initialIndex]);
 
@@ -39,37 +41,20 @@ export default function ImageLightbox({ isOpen, imageUrls = [], initialIndex = 0
         }
         if (isOpen) {
             document.body.style.overflow = "hidden";
-            setScale(1);
-            x.set(0);
-            y.set(0);
         } else {
             document.body.style.overflow = "unset";
         }
         return () => {
             document.body.style.overflow = "unset";
         };
-    }, [isOpen, x, y]);
+    }, [isOpen]);
 
-    // Handle constraints and auto-clamping
     const constraints = {
         left: -Math.max(0, (imgSize.width * scale - viewport.width) / 2),
         right: Math.max(0, (imgSize.width * scale - viewport.width) / 2),
         top: -Math.max(0, (imgSize.height * scale - viewport.height) / 2),
         bottom: Math.max(0, (imgSize.height * scale - viewport.height) / 2),
     };
-
-    useEffect(() => {
-        if (!isOpen) return;
-
-        const currentX = x.get();
-        const currentY = y.get();
-
-        const clampedX = Math.max(constraints.left, Math.min(constraints.right, currentX));
-        const clampedY = Math.max(constraints.top, Math.min(constraints.bottom, currentY));
-
-        if (clampedX !== currentX) animate(x, clampedX, { duration: 0.1 });
-        if (clampedY !== currentY) animate(y, clampedY, { duration: 0.1 });
-    }, [scale, constraints.left, constraints.right, constraints.top, constraints.bottom, isOpen, x, y]);
 
     const handleWheel = (e: React.WheelEvent) => {
         const delta = e.deltaY;
@@ -80,54 +65,55 @@ export default function ImageLightbox({ isOpen, imageUrls = [], initialIndex = 0
         });
     };
 
-    const handleTouchMove = (e: React.TouchEvent) => {
-        if (e.touches.length === 2) {
-            const touch1 = e.touches[0];
-            const touch2 = e.touches[1];
-            const dist = Math.hypot(touch1.pageX - touch2.pageX, touch1.pageY - touch2.pageY);
-
-            if (prevDist > 0) {
-                const diff = dist - prevDist;
-                setScale((prev) => {
-                    const newScale = prev + diff * 0.01;
-                    return Math.max(1, Math.min(newScale, 5));
-                });
-            }
-            setPrevDist(dist);
-        }
-    };
-
-    const handleTouchEnd = () => {
-        setPrevDist(0);
-    };
-
     const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
         const { naturalWidth, naturalHeight } = e.currentTarget;
         const dw = window.innerWidth;
-        const dh = (naturalHeight / naturalWidth) * dw; // Keep aspect ratio, fit width
+        const ratio = naturalHeight / naturalWidth;
+        const dh = dw * ratio;
         setImgSize({ width: dw, height: dh });
-        setScale(1);
-        x.set(0);
-        y.set(0);
     };
 
-    const nextImage = useCallback((e?: React.MouseEvent) => {
-        e?.stopPropagation();
+    const nextImage = useCallback(() => {
         if (currentIndex < imageUrls.length - 1) {
             setCurrentIndex(prev => prev + 1);
             setScale(1);
+            x.set(0);
+            y.set(0);
         }
-    }, [currentIndex, imageUrls.length]);
+    }, [currentIndex, imageUrls.length, x, y]);
 
-    const prevImage = useCallback((e?: React.MouseEvent) => {
-        e?.stopPropagation();
+    const prevImage = useCallback(() => {
         if (currentIndex > 0) {
             setCurrentIndex(prev => prev - 1);
             setScale(1);
+            x.set(0);
+            y.set(0);
         }
-    }, [currentIndex]);
+    }, [currentIndex, x, y]);
 
-    // Keyboard Nav
+    const handleDoubleTap = (e: React.MouseEvent | React.TouchEvent) => {
+        const now = Date.now();
+        if (now - lastTap.current < 300) {
+            if (scale > 1) {
+                setScale(1);
+                animate(x, 0);
+                animate(y, 0);
+            } else {
+                setScale(3);
+            }
+        }
+        lastTap.current = now;
+    };
+
+    const onDragEnd = (event: any, info: any) => {
+        // Only swipe if not zoomed in
+        if (scale === 1) {
+            const threshold = 50;
+            if (info.offset.x < -threshold) nextImage();
+            else if (info.offset.x > threshold) prevImage();
+        }
+    };
+
     useEffect(() => {
         if (!isOpen) return;
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -141,7 +127,6 @@ export default function ImageLightbox({ isOpen, imageUrls = [], initialIndex = 0
 
     if (!mounted) return null;
 
-    // Safety check
     const currentSrc = imageUrls[currentIndex] || "";
 
     return createPortal(
@@ -154,48 +139,36 @@ export default function ImageLightbox({ isOpen, imageUrls = [], initialIndex = 0
                     className={styles.overlay}
                     onClick={onClose}
                     onWheel={handleWheel}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
                 >
                     <button className={styles.closeBtn} onClick={onClose}>
                         <X size={28} />
                     </button>
 
-                    {/* Navigation Buttons */}
-                    {currentIndex > 0 && (
-                        <button className={`${styles.navBtn} ${styles.prevBtn}`} onClick={prevImage}>
-                            <ChevronLeft size={32} />
-                        </button>
-                    )}
-                    {currentIndex < imageUrls.length - 1 && (
-                        <button className={`${styles.navBtn} ${styles.nextBtn}`} onClick={nextImage}>
-                            <ChevronRight size={32} />
-                        </button>
-                    )}
-
-                    {/* Counter Badge */}
                     {imageUrls.length > 1 && (
                         <div className={styles.counterBadge}>
                             {currentIndex + 1} / {imageUrls.length}
                         </div>
                     )}
 
-                    <div className={styles.container} onClick={(e) => e.stopPropagation()}>
+                    <div className={styles.container} onClick={onClose}>
                         <motion.img
-                            key={currentSrc} // Key change forces re-render for clean transition
+                            key={currentSrc}
                             ref={imgRef}
                             src={currentSrc}
-                            alt={`Image ${currentIndex + 1}`}
+                            alt="Lightbox"
                             className={styles.image}
                             onLoad={handleImageLoad}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: scale, x: x.get(), y: y.get() }} // Bind motion values? No, bind via style prop for drag
-                            style={{ x, y, scale }} // Scale here to separate from drag
-                            drag
-                            dragConstraints={constraints}
-                            dragElastic={0}
-                            dragMomentum={false}
-                            whileTap={{ cursor: "grabbing" }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleDoubleTap(e);
+                            }}
+                            style={{ x, y, scale }}
+                            drag={scale > 1 ? true : "x"} // Horizontal only if scale is 1 for swipe
+                            dragConstraints={scale > 1 ? constraints : { left: 0, right: 0 }}
+                            dragElastic={scale > 1 ? 0.1 : 0.5}
+                            onDragEnd={onDragEnd}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: scale }}
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         />
                     </div>

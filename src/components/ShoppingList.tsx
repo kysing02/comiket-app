@@ -13,14 +13,16 @@ interface ShoppingListProps {
     items: any[];
     onUpdate: (silent?: boolean) => void;
     onEditCircle: (circle: any, step?: 1 | 2) => void;
+    dbBuyers: any[];
 }
 
-export default function ShoppingList({ items, onUpdate, onEditCircle }: ShoppingListProps) {
+export default function ShoppingList({ items, onUpdate, onEditCircle, dbBuyers }: ShoppingListProps) {
     const [filterDay, setFilterDay] = useState<string | null>(null);
     const [filterArea, setFilterArea] = useState<string | null>(null); // New: Area filter (東, 西)
     const [filterPriority, setFilterPriority] = useState<string[]>([]); // Array for multiple selection
     const [filterTags, setFilterTags] = useState<string[]>([]); // Array of color hexes
     const [searchQuery, setSearchQuery] = useState("");
+    const [filterBuyer, setFilterBuyer] = useState<string | null>(null);
     // Lightbox State
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxImages, setLightboxImages] = useState<string[]>([]);
@@ -132,7 +134,12 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
             it.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             it.circles?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             it.circles?.artist?.toLowerCase().includes(searchQuery.toLowerCase());
-        return dayMatch && areaMatch && priorityMatch && tagMatch && searchMatch;
+
+        const buyerMatch = !filterBuyer ||
+            (it.item_buyers?.some((ib: any) => ib.buyers?.name === filterBuyer)) ||
+            (it.buyer === filterBuyer);
+
+        return dayMatch && areaMatch && priorityMatch && tagMatch && searchMatch && buyerMatch;
     });
 
     const sortedItems = getSortedItems(filteredItems);
@@ -200,6 +207,9 @@ export default function ShoppingList({ items, onUpdate, onEditCircle }: Shopping
                 filterTags={filterTags}
                 toggleTagFilter={toggleTagFilter}
                 clearTagFilter={clearTagFilter}
+                dbBuyers={dbBuyers}
+                filterBuyer={filterBuyer}
+                setFilterBuyer={setFilterBuyer}
             />
 
             <ShoppingStats

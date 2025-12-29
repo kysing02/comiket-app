@@ -471,6 +471,7 @@
   left: 1rem;
   color: var(--muted);
   pointer-events: none;
+  z-index: 2;
 }
 
 .searchBox input {

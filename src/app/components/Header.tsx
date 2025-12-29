@@ -1,5 +1,4 @@
-import React from "react";
-import { WifiOff, Download, Settings } from "lucide-react";
+import { WifiOff, Download, Settings, RefreshCcw } from "lucide-react";
 import styles from "../page.module.css";
 
 interface HeaderProps {
@@ -31,6 +30,9 @@ export const Header: React.FC<HeaderProps> = ({
                             <Download size={20} />
                         </button>
                     )}
+                    <button className={styles.iconBtn} onClick={() => window.location.reload()} title="Refresh App">
+                        <RefreshCcw size={20} />
+                    </button>
                     <button className={styles.iconBtn} onClick={onOpenSettings}>
                         <Settings size={20} />
                     </button>

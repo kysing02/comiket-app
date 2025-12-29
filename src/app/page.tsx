@@ -468,6 +468,7 @@ export default function Home() {
             items.length > 0 ? (
               <ShoppingList
                 items={items}
+                dbBuyers={dbBuyers}
                 onUpdate={(silent = false) => {
                   fetchItems(silent);
                   fetchCircles(silent);
