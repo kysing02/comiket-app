@@ -667,49 +667,45 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                                         <div key={item.id} className={`${styles.itemRow} glass`}>
                                             <div className={styles.itemMainRow}>
                                                 <input
-                                                    type="checkbox"
-                                                    checked={item.isWanted}
-                                                    onChange={(e) => handleItemChange(index, "isWanted", e.target.checked)}
-                                                    className={styles.itemCheck}
-                                                />
-                                                <input
                                                     type="text"
                                                     placeholder="Item Name"
                                                     value={item.name}
                                                     onChange={(e) => handleItemChange(index, "name", e.target.value)}
                                                     className={styles.itemNameInput}
                                                 />
-                                                <input
-                                                    type="number"
-                                                    placeholder="¥"
-                                                    value={item.price}
-                                                    onChange={(e) => handleItemChange(index, "price", e.target.value)}
-                                                    className={styles.itemPriceInput}
-                                                />
-                                                <div className={styles.qtyWrapper}>
+                                                <div className={styles.itemMetaActions}>
                                                     <input
                                                         type="number"
-                                                        placeholder="Qty"
-                                                        min="0"
-                                                        value={item.quantity || 0}
-                                                        onChange={(e) => handleItemChange(index, "quantity", parseInt(e.target.value))}
-                                                        className={styles.itemQtyInput}
+                                                        placeholder="¥"
+                                                        value={item.price}
+                                                        onChange={(e) => handleItemChange(index, "price", e.target.value)}
+                                                        className={styles.itemPriceInput}
                                                     />
+                                                    <div className={styles.qtyWrapper}>
+                                                        <input
+                                                            type="number"
+                                                            placeholder="Qty"
+                                                            min="0"
+                                                            value={item.quantity || 0}
+                                                            onChange={(e) => handleItemChange(index, "quantity", parseInt(e.target.value))}
+                                                            className={styles.itemQtyInput}
+                                                        />
+                                                    </div>
+                                                    <div className={styles.priorityWrapper}>
+                                                        <select
+                                                            value={item.priority}
+                                                            onChange={(e) => handleItemChange(index, "priority", e.target.value)}
+                                                            className={styles.itemPrioritySelect}
+                                                        >
+                                                            <option value="High">高</option>
+                                                            <option value="Medium">中</option>
+                                                            <option value="Low">低</option>
+                                                        </select>
+                                                    </div>
+                                                    <button className={styles.removeBtn} onClick={() => removeItem(index)}>
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 </div>
-                                                <div className={styles.priorityWrapper}>
-                                                    <select
-                                                        value={item.priority}
-                                                        onChange={(e) => handleItemChange(index, "priority", e.target.value)}
-                                                        className={styles.itemPrioritySelect}
-                                                    >
-                                                        <option value="High">高</option>
-                                                        <option value="Medium">中</option>
-                                                        <option value="Low">低</option>
-                                                    </select>
-                                                </div>
-                                                <button className={styles.removeBtn} onClick={() => removeItem(index)}>
-                                                    <Trash2 size={16} />
-                                                </button>
                                             </div>
 
                                             <div className={styles.buyerChipContainer}>

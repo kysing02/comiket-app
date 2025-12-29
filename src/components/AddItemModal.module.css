@@ -368,7 +368,8 @@
     flex: 1;
     margin: -1rem;
     /* Match parent content padding */
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: hidden;
     /* Strict overflow control */
 }
 
@@ -481,6 +482,24 @@
     width: 100%;
 }
 
+.itemMetaActions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+@media (max-width: 600px) {
+    .itemMainRow {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.25rem;
+    }
+    
+    .itemMetaActions {
+        justify-content: flex-end;
+    }
+}
+
 .itemRow:hover {
     background: rgba(255, 255, 255, 0.05);
 }
@@ -504,6 +523,9 @@
     color: white;
     font-size: 0.95rem;
     padding: 0.25rem 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .itemNameInput:focus {
@@ -589,7 +611,6 @@
     flex-wrap: wrap;
     gap: 4px;
     margin-top: 4px;
-    margin-left: 25px;
 }
 
 .buyerChip {
@@ -620,7 +641,6 @@
     flex-wrap: wrap;
     gap: 8px;
     margin-top: 4px;
-    margin-left: 25px;
     /* Alignment with name */
     align-items: center;
 }

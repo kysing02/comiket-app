@@ -266,6 +266,8 @@
     border: 1px solid var(--glass-border);
     transition: all 0.2s;
     margin-bottom: 0px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .rowCard:hover {
