@@ -99,20 +99,32 @@
 
 .imageSwipeContainer {
     width: 100%;
-    display: grid;
-    place-items: center;
     overflow: hidden;
     position: relative;
     touch-action: pan-y;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.carousel {
+    display: flex;
+    width: 100%;
+}
+
+.slide {
+    flex: 0 0 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .priceListImage {
-    grid-area: 1 / 1;
     width: 100%;
     height: auto;
     display: block;
     cursor: grab;
-    z-index: 1;
+    user-select: none;
+    -webkit-user-drag: none;
 }
 
 .priceListImage:active {

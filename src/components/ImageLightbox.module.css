@@ -38,35 +38,39 @@
     width: 100%;
     height: 100%;
     display: flex;
-    align-items: flex-start;
-    /* Align top for tall images */
+    align-items: center;
     justify-content: center;
     overflow: hidden;
-    padding-top: 60px;
-    /* Space for close button if needed, but flex-start means top */
 }
 
-/* Adjust padding based on desired behavior. Before it was auto centered.
-   With "Tall image fit width", we want it to start at top and scroll down.
-   Center vertically if image is shorter than screen.
-*/
-.container {
-    overflow: visible;
-    /* Allow drag outside visual bound calculation */
+.carousel {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+    width: 100%;
+    touch-action: none;
+}
+
+.slide {
+    flex: 0 0 100%;
+    width: 100vw;
+    height: 100%;
+    display: flex;
     align-items: center;
-    /* Default center, but large height will overflow top/bottom which drag handles */
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
 }
 
 .image {
-    width: 100%;
+    max-width: 98vw;
+    max-height: 98vh;
+    width: auto;
     height: auto;
     object-fit: contain;
-    /* Ensure it respects aspect ratio */
     cursor: grab;
-    max-width: 98vw;
-    /* Maximized width as requested */
-    max-height: 98vh;
-    /* Ensure it fits screen */
+    user-select: none;
+    -webkit-user-drag: none;
 }
 
 .image:active {
