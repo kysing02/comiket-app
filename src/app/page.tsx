@@ -12,6 +12,9 @@ import { Header } from "./components/Header";
 import { BottomNav } from "./components/BottomNav";
 import { FeedTab } from "./components/FeedTab";
 import { SettingsTab } from "./components/SettingsTab";
+import { ShoppingStats } from "@/components/ShoppingList/components/ShoppingStats";
+import { ShoppingListFilterModal } from "@/components/ShoppingList/components/ShoppingListFilterModal";
+import { Filter, Search, LayoutGrid, LayoutList } from "lucide-react";
 
 export default function Home() {
   const [activeTab, setActiveTabState] = useState("feed");
@@ -48,6 +51,18 @@ export default function Home() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isOffline, setIsOffline] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Lifted Filter/Sort State (from ShoppingList)
+  const [filterDay, setFilterDay] = useState<string | null>(null);
+  const [filterArea, setFilterArea] = useState<string | null>(null);
+  const [filterPriority, setFilterPriority] = useState<string[]>([]);
+  const [filterTags, setFilterTags] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterBuyer, setFilterBuyer] = useState<string | null>(null);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'circle', direction: 'asc' });
+  const [isFiltersInitialized, setIsFiltersInitialized] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
 
   /* Load Settings from LocalStorage */
@@ -65,7 +80,41 @@ export default function Home() {
         console.error("Failed to parse settings", e);
       }
     }
+
+    // Load Filters
+    const savedFilters = localStorage.getItem("shopping_list_filters");
+    if (savedFilters) {
+      try {
+        const parsed = JSON.parse(savedFilters);
+        setFilterDay(parsed.filterDay || null);
+        setFilterArea(parsed.filterArea || null);
+        setFilterPriority(parsed.filterPriority || []);
+        setFilterTags(parsed.filterTags || []);
+        setFilterBuyer(parsed.filterBuyer || null);
+        setSearchQuery(parsed.searchQuery || "");
+        if (parsed.sortConfig) setSortConfig(parsed.sortConfig);
+      } catch (e) {
+        console.error("Failed to load filters", e);
+      }
+    }
+    setIsFiltersInitialized(true);
   }, []);
+
+  // Save Filters
+  useEffect(() => {
+    if (!isFiltersInitialized) return;
+    const toSave = {
+      filterDay,
+      filterArea,
+      filterPriority,
+      filterTags,
+      filterBuyer,
+      searchQuery,
+      sortConfig
+    };
+    localStorage.setItem("shopping_list_filters", JSON.stringify(toSave));
+  }, [filterDay, filterArea, filterPriority, filterTags, filterBuyer, searchQuery, sortConfig, isFiltersInitialized]);
+
 
   const fetchBuyers = async () => {
     try {
@@ -297,6 +346,99 @@ export default function Home() {
     }
   };
 
+  const togglePriorityFilter = (priority: string) => {
+    if (filterPriority.includes(priority)) {
+      setFilterPriority(filterPriority.filter(p => p !== priority));
+    } else {
+      setFilterPriority([...filterPriority, priority]);
+    }
+  };
+
+  const toggleTagFilter = (color: string) => {
+    if (filterTags.includes(color)) {
+      setFilterTags(filterTags.filter(c => c !== color));
+    } else {
+      setFilterTags([...filterTags, color]);
+    }
+  };
+
+  const clearPriorityFilter = () => setFilterPriority([]);
+  const clearTagFilter = () => setFilterTags([]);
+
+  const getSortedItems = (items: any[]) => {
+    if (!sortConfig) return items;
+
+    return [...items].sort((a, b) => {
+      let aVal, bVal;
+
+      switch (sortConfig.key) {
+        case 'status':
+          aVal = a.is_purchased ? 1 : 0;
+          bVal = b.is_purchased ? 1 : 0;
+          break;
+        case 'circle': // Sort by Day then Space
+          aVal = `${a.circles?.day || "9"}-${a.circles?.formatted_location || ""}`;
+          bVal = `${b.circles?.day || "9"}-${b.circles?.formatted_location || ""}`;
+          break;
+        case 'gojuon': // Sort by 東 あ-わ -> 西 あ-わ -> A-Z
+          const getSortKey = (item: any) => {
+            const areaOrder = item.circles?.area === "東" ? "1" : (item.circles?.area === "西" ? "2" : "3");
+            return `${areaOrder}-${item.circles?.name || ""}`;
+          };
+          aVal = getSortKey(a);
+          bVal = getSortKey(b);
+          const result = aVal.localeCompare(bVal, 'ja');
+          return sortConfig.direction === 'asc' ? result : -result;
+        case 'price':
+          aVal = a.price || 0;
+          bVal = b.price || 0;
+          break;
+        case 'priority': // High > Medium > Low
+          const pMap: any = { "High": 3, "Medium": 2, "Low": 1 };
+          aVal = pMap[a.priority] || 0;
+          bVal = pMap[b.priority] || 0;
+          break;
+        case 'buyer':
+          aVal = a.buyer || "";
+          bVal = b.buyer || "";
+          break;
+        default:
+          return 0;
+      }
+
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const filteredItems = items.filter(it => {
+    if ((it.quantity || 0) <= 0) return false;
+    const dayMatch = !filterDay || it.circles?.day === filterDay;
+    const areaMatch = !filterArea || it.circles?.area === filterArea;
+    const priorityMatch = filterPriority.length === 0 || filterPriority.includes(it.priority);
+    const tagMatch = filterTags.length === 0 || filterTags.some(t => it.tags?.includes(t));
+    const searchMatch = !searchQuery ||
+      it.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      it.circles?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      it.circles?.artist?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const buyerMatch = !filterBuyer ||
+      (filterBuyer === "None" && (!it.item_buyers || it.item_buyers.length === 0) && !it.buyer) ||
+      (it.item_buyers?.some((ib: any) => ib.buyers?.name === filterBuyer)) ||
+      (it.buyer === filterBuyer);
+
+    return dayMatch && areaMatch && priorityMatch && tagMatch && searchMatch && buyerMatch;
+  });
+
+  const sortedItems = getSortedItems(filteredItems);
+
+  const totalPrice = filteredItems.reduce((sum, it) => sum + (it.price || 0), 0);
+  const purchasedPrice = filteredItems.reduce((sum, it) => sum + (it.is_purchased ? it.price || 0 : 0), 0);
+  const totalCount = filteredItems.length;
+  const purchasedCount = filteredItems.filter(it => it.is_purchased).length;
+
+
   // ... existing fetch logic ...
 
 
@@ -457,8 +599,93 @@ export default function Home() {
         onOpenSettings={() => setActiveTab("settings")}
       />
 
+      {/* Fixed SubHeader for Controls - Only for Feed and List */}
+      {(activeTab === "feed" || activeTab === "list") && (
+        <div className={styles.subHeader}>
+          {activeTab === "feed" && (
+            <div className={styles.feedSearchWrapper}>
+              <div className={styles.searchBox}>
+                <Search size={18} className={styles.searchIcon} />
+                <input
+                  type="text"
+                  placeholder="Search artist, circle, or content..."
+                  value={feedSearch}
+                  onChange={(e) => setFeedSearch(e.target.value)}
+                />
+              </div>
+              <div className={styles.viewToggle}>
+                <button
+                  className={`${styles.toggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
+                  onClick={() => setViewMode('grid')}
+                >
+                  <LayoutGrid size={18} />
+                </button>
+                <button
+                  className={`${styles.toggleBtn} ${viewMode === 'list' ? styles.active : ''}`}
+                  onClick={() => setViewMode('list')}
+                >
+                  <LayoutList size={18} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "list" && (
+            <div className={styles.shoppingHeaderWrapper}>
+              <div className={styles.searchBarRow}>
+                <div className={styles.searchBox}>
+                  <Search size={18} className={styles.searchIcon} />
+                  <input
+                    type="text"
+                    placeholder="Search items, circles..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <button
+                  className={`${styles.filterBtn} ${filterDay || filterArea || filterPriority.length > 0 || filterTags.length > 0 || filterBuyer ? styles.hasFilters : ""}`}
+                  onClick={() => setIsFilterModalOpen(true)}
+                >
+                  <Filter size={20} />
+                  {(filterDay || filterArea || filterPriority.length > 0 || filterTags.length > 0 || filterBuyer) && <span className={styles.filterDot} />}
+                </button>
+              </div>
+
+              <ShoppingStats
+                purchasedPrice={purchasedPrice}
+                totalPrice={totalPrice}
+                purchasedCount={purchasedCount}
+                totalCount={totalCount}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      <ShoppingListFilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        filterDay={filterDay}
+        setFilterDay={setFilterDay}
+        filterArea={filterArea}
+        setFilterArea={setFilterArea}
+        filterPriority={filterPriority}
+        togglePriorityFilter={togglePriorityFilter}
+        clearPriorityFilter={clearPriorityFilter}
+        filterTags={filterTags}
+        toggleTagFilter={toggleTagFilter}
+        clearTagFilter={clearTagFilter}
+        dbBuyers={dbBuyers}
+        filterBuyer={filterBuyer}
+        setFilterBuyer={setFilterBuyer}
+      />
+
+
       {/* Main Content Area */}
       <div className={styles.contentScroll} ref={scrollRef}>
+
         <section className={styles.feedContainer}>
           {loading ? (
             <div className={styles.loadingWrapper}>
@@ -467,12 +694,21 @@ export default function Home() {
           ) : activeTab === "list" ? (
             items.length > 0 ? (
               <ShoppingList
-                items={items}
+                items={sortedItems}
                 dbBuyers={dbBuyers}
+                sortConfig={sortConfig}
+                onSort={(key: string) => {
+                  let direction: 'asc' | 'desc' = 'asc';
+                  if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+                    direction = 'desc';
+                  }
+                  setSortConfig({ key, direction });
+                }}
                 onUpdate={(silent = false) => {
                   fetchItems(silent);
                   fetchCircles(silent);
                 }}
+
                 onEditCircle={async (circle, step) => {
                   // Ensure we have the full circle data including items
                   let fullCircle = circles.find((c) => c.id === circle.id);

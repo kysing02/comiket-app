@@ -61,34 +61,6 @@ export const FeedTab: React.FC<FeedTabProps> = ({
                 isDanger={true}
                 confirmText="Delete"
             />
-            <div className={styles.feedSearchWrapper}>
-                <div className={styles.searchBox}>
-                    <Search size={18} className={styles.searchIcon} />
-                    <input
-                        type="text"
-                        placeholder="Search artist, circle, or content..."
-                        value={feedSearch}
-                        onChange={(e) => setFeedSearch(e.target.value)}
-                        className="glass"
-                    />
-                </div>
-                <div className={styles.viewToggle}>
-                    <button
-                        className={`${styles.toggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
-                        onClick={() => setViewMode('grid')}
-                        title="Grid View"
-                    >
-                        <LayoutGrid size={18} />
-                    </button>
-                    <button
-                        className={`${styles.toggleBtn} ${viewMode === 'list' ? styles.active : ''}`}
-                        onClick={() => setViewMode('list')}
-                        title="List View"
-                    >
-                        <LayoutList size={18} />
-                    </button>
-                </div>
-            </div>
 
             <ScrapedInbox
                 posts={scrapedPosts}

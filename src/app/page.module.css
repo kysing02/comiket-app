@@ -8,16 +8,23 @@
 }
 
 .header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  padding: 1rem;
+  width: 100%;
+  height: 72px; /* Explicit height for consistency */
   border-bottom: 1px solid var(--glass-border);
-  border-radius: 0;
+  background: rgba(15, 17, 26, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0; /* Don't squash in flexbox */
+  z-index: 100;
 }
+
+
 
 .headerContent {
   width: 100%;
+  max-width: 800px; /* Optional: limit max width on desktop */
   padding: 0 5px;
   margin: 0 auto;
   display: flex;
@@ -82,14 +89,84 @@
   flex: 1;
   overflow-y: auto;
   padding: 1rem 5px;
-  /* Precisely 5px horizontal padding */
   padding-bottom: 120px;
-  padding-top: 0;
-  /* Space for FAB and Nav */
   width: 100%;
   margin: 0 auto;
   overflow-x: hidden;
 }
+
+
+
+
+
+.subHeader {
+  width: 100%;
+  background: rgba(15, 17, 26, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: center; /* Center contents */
+  flex-shrink: 0; /* don't squash */
+  z-index: 90;
+}
+
+
+
+
+.shoppingHeaderWrapper {
+  width: 100%; /* Force full width within flex parent */
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+
+.searchBarRow {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin: 0 auto;
+}
+
+
+.filterBtn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: var(--muted);
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.filterBtn.hasFilters {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: var(--primary-glow);
+}
+
+.filterDot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    background: var(--primary);
+    border-radius: 50%;
+    border: 2px solid var(--background);
+}
+
 
 .viewControls {
   display: flex;
@@ -418,22 +495,16 @@
 }
 
 .feedSearchWrapper {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--background);
-  backdrop-filter: blur(20px);
-  margin-bottom: 0.5rem;
-  margin-left: -5px;
-  margin-right: -5px;
-  padding: 0.75rem 0.75rem;
-  width: calc(100% + 10px);
+  width: 100%; /* Ensure full width */
+  max-width: 800px;
+  margin: 0 auto;
   display: flex;
   gap: 1rem;
   align-items: center;
   justify-content: center;
-  border-bottom: 1px solid var(--glass-border);
 }
+
+
 
 .artistList, .artistGrid {
   padding-top: 1rem;
@@ -488,6 +559,7 @@
   border-radius: 12px;
   border: 1px solid var(--glass-border);
   color: white;
+  background: rgba(255, 255, 255, 0.05); /* Restored missing background */
   font-size: 0.95rem;
   transition: all 0.2s;
 }
@@ -725,6 +797,8 @@
   align-items: center;
   padding: 3rem;
   width: 100%;
+  flex: 1;
+  min-height: 50vh;
 }
 
 .loadingItems {
