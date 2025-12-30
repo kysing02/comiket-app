@@ -1,15 +1,11 @@
 import React from "react";
 import { Plus, Trash2 } from "lucide-react";
 import styles from "../page.module.css";
+import { AppSettings } from "@/hooks/useAppInitialization";
 
 interface SettingsTabProps {
-    appSettings: {
-        aiModel: string;
-        ocrMethod: string;
-        defaultBuyer: string;
-        buyerList: string[];
-    };
-    updateSetting: (key: string, value: any) => void;
+    appSettings: AppSettings;
+    updateSetting: (key: keyof AppSettings, value: any) => void;
     dbBuyers: any[];
     addBuyer: () => void;
     removeBuyer: (id: string) => void;
