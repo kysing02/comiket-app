@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ShoppingBag, MapPin } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import styles from "./page.module.css";
 
 import ShoppingList from "@/components/ShoppingList";
@@ -11,6 +12,7 @@ import { BottomNav } from "./components/BottomNav";
 import { FeedTab } from "./components/FeedTab";
 import { SettingsTab } from "./components/SettingsTab";
 import { ShoppingListFilterModal } from "@/components/ShoppingList/components/ShoppingListFilterModal";
+import { FeedFilterModal } from "./components/FeedFilterModal";
 import { SubHeader } from "./components/SubHeader";
 
 import { useAppInitialization } from "@/hooks/useAppInitialization";
@@ -61,7 +63,29 @@ export default function Home() {
   const [modalStep, setModalStep] = useState<1 | 2>(1);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [feedSearch, setFeedSearch] = useState("");
+  const [feedFilterDay, setFeedFilterDay] = useState<string | null>(null);
+  const [feedFilterArea, setFeedFilterArea] = useState<string | null>(null);
+  const [filterFavorites, setFilterFavorites] = useState(false);
+  const [favoriteCircleIds, setFavoriteCircleIds] = useState<string[]>([]);
+  const [isFeedFilterModalOpen, setIsFeedFilterModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+  // Load favorites from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("favorite_circles");
+    if (saved) {
+      try {
+        setFavoriteCircleIds(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse favorites", e);
+      }
+    }
+  }, []);
+
+  // Save favorites to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem("favorite_circles", JSON.stringify(favoriteCircleIds));
+  }, [favoriteCircleIds]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -135,7 +159,10 @@ export default function Home() {
         setSearchQuery={setSearchQuery}
         isFilterModalOpen={isFilterModalOpen}
         setIsFilterModalOpen={setIsFilterModalOpen}
+        isFeedFilterModalOpen={isFeedFilterModalOpen}
+        setIsFeedFilterModalOpen={setIsFeedFilterModalOpen}
         hasFilters={!!(filterDay || filterArea || filterPriority.length > 0 || filterTags.length > 0 || filterBuyer)}
+        hasFeedFilters={!!(feedFilterDay || feedFilterArea || filterFavorites)}
         stats={{ purchasedPrice, totalPrice, purchasedCount, totalCount }}
         onSort={(key: string) => {
           let direction: 'asc' | 'desc' = 'asc';
@@ -144,6 +171,17 @@ export default function Home() {
         }}
         sortConfig={sortConfig}
         onClearFilters={resetFilters}
+      />
+
+      <FeedFilterModal
+        isOpen={isFeedFilterModalOpen}
+        onClose={() => setIsFeedFilterModalOpen(false)}
+        filterDay={feedFilterDay}
+        setFilterDay={setFeedFilterDay}
+        filterArea={feedFilterArea}
+        setFilterArea={setFeedFilterArea}
+        filterFavorites={filterFavorites}
+        setFilterFavorites={setFilterFavorites}
       />
 
       <ShoppingListFilterModal
@@ -228,13 +266,24 @@ export default function Home() {
               scrapedPosts={scrapedPosts}
               handleMarkAsRead={handleMarkAsRead}
               handleImportPost={handleImportPost}
-              circles={circles}
+              circles={circles.map(c => ({
+                ...c,
+                is_favorite: favoriteCircleIds.includes(c.id)
+              }))}
               onEditCircle={(circle, step) => {
                 setEditingCircle(circle);
                 setModalStep(step || 1);
                 setIsModalOpen(true);
               }}
               onDeleteCircle={handleDeleteCircle}
+              onToggleFavorite={(id) => {
+                setFavoriteCircleIds(prev =>
+                  prev.includes(id) ? prev.filter(fid => fid !== id) : [...prev, id]
+                );
+              }}
+              filterDay={feedFilterDay}
+              filterArea={feedFilterArea}
+              filterFavorites={filterFavorites}
             />
           )}
         </section>

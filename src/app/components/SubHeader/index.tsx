@@ -14,7 +14,10 @@ interface SubHeaderProps {
     setSearchQuery: (val: string) => void;
     isFilterModalOpen: boolean;
     setIsFilterModalOpen: (open: boolean) => void;
+    isFeedFilterModalOpen: boolean;
+    setIsFeedFilterModalOpen: (open: boolean) => void;
     hasFilters: boolean;
+    hasFeedFilters: boolean;
     stats: {
         purchasedPrice: number;
         totalPrice: number;
@@ -35,7 +38,10 @@ export function SubHeader({
     searchQuery,
     setSearchQuery,
     setIsFilterModalOpen,
+    isFeedFilterModalOpen,
+    setIsFeedFilterModalOpen,
     hasFilters,
+    hasFeedFilters,
     stats,
     onSort,
     sortConfig,
@@ -73,6 +79,13 @@ export function SubHeader({
                             onClick={() => setViewMode('list')}
                         >
                             <LayoutList size={18} />
+                        </button>
+                        <button
+                            className={`${styles.filterBtn} ${hasFeedFilters ? styles.hasFilters : ""}`}
+                            onClick={() => setIsFeedFilterModalOpen(true)}
+                        >
+                            <Filter size={20} />
+                            {hasFeedFilters && <span className={styles.filterDot} />}
                         </button>
                     </div>
                 </div>

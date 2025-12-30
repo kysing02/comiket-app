@@ -297,6 +297,31 @@
     border-color: var(--danger);
 }
 
+.favoriteBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.6rem;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.favoriteBtn.active {
+    color: #ef4444; /* Heart Red */
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.favoriteBtn:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+}
+
 @media (max-width: 600px) {
     .card {
         padding: 1rem 0.5rem;
@@ -459,6 +484,31 @@
     color: var(--danger);
     background: rgba(239, 68, 68, 0.1);
     border-color: var(--danger);
+}
+
+.rowFavoriteBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.rowFavoriteBtn.active {
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.rowFavoriteBtn:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
 }
 
 @media (max-width: 480px) {

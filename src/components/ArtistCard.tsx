@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Image as ImageIcon, List as ListIcon, Edit2, ShoppingCart, Trash2 } from "lucide-react";
+import { MapPin, Image as ImageIcon, List as ListIcon, Edit2, ShoppingCart, Trash2, Heart } from "lucide-react";
 import styles from "./ArtistCard.module.css";
 import ImageLightbox from "./ImageLightbox";
 
@@ -8,10 +8,11 @@ interface ArtistCardProps {
     circle: any;
     onEdit: (step?: 1 | 2) => void;
     onDelete: (id: string) => void;
+    onToggleFavorite: (id: string, isFavorite: boolean) => void;
     variant?: "card" | "row";
 }
 
-export default function ArtistCard({ circle, onEdit, onDelete, variant = "card" }: ArtistCardProps) {
+export default function ArtistCard({ circle, onEdit, onDelete, onToggleFavorite, variant = "card" }: ArtistCardProps) {
     const [view, setView] = useState<"image" | "list">("image");
     const [imageIndex, setImageIndex] = useState(0);
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -64,6 +65,12 @@ export default function ArtistCard({ circle, onEdit, onDelete, variant = "card" 
                         <button className={styles.rowBuyBtn} onClick={() => onEdit(2)}>
                             <ShoppingCart size={16} />
                             <span>Buy</span>
+                        </button>
+                        <button
+                            className={`${styles.rowFavoriteBtn} ${circle.is_favorite ? styles.active : ""}`}
+                            onClick={() => onToggleFavorite(circle.id, !!circle.is_favorite)}
+                        >
+                            <Heart size={16} fill={circle.is_favorite ? "currentColor" : "none"} />
                         </button>
                         <button className={styles.rowDeleteBtn} onClick={() => onDelete(circle.id)}>
                             <Trash2 size={16} />
@@ -190,6 +197,12 @@ export default function ArtistCard({ circle, onEdit, onDelete, variant = "card" 
                     <button className={styles.buyBtn} onClick={() => onEdit(2)}>
                         <ShoppingCart size={16} />
                         <span>Buy</span>
+                    </button>
+                    <button
+                        className={`${styles.favoriteBtn} ${circle.is_favorite ? styles.active : ""}`}
+                        onClick={() => onToggleFavorite(circle.id, !!circle.is_favorite)}
+                    >
+                        <Heart size={16} fill={circle.is_favorite ? "currentColor" : "none"} />
                     </button>
                     <button className={styles.deleteBtn} onClick={() => onDelete(circle.id)}>
                         <Trash2 size={16} />

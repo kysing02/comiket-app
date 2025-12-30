@@ -16,6 +16,10 @@ interface FeedTabProps {
     circles: any[];
     onEditCircle: (circle: any, step?: 1 | 2) => void;
     onDeleteCircle: (id: string) => void;
+    onToggleFavorite: (id: string, isFavorite: boolean) => void;
+    filterDay: string | null;
+    filterArea: string | null;
+    filterFavorites: boolean;
 }
 
 export const FeedTab: React.FC<FeedTabProps> = ({
@@ -29,11 +33,20 @@ export const FeedTab: React.FC<FeedTabProps> = ({
     circles,
     onEditCircle,
     onDeleteCircle,
+    onToggleFavorite,
+    filterDay,
+    filterArea,
+    filterFavorites,
 }) => {
-    const filteredCircles = circles.filter(c => !feedSearch ||
-        c.name?.toLowerCase().includes(feedSearch.toLowerCase()) ||
-        c.artist?.toLowerCase().includes(feedSearch.toLowerCase())
-    );
+    const filteredCircles = circles.filter(c => {
+        const searchMatch = !feedSearch ||
+            c.name?.toLowerCase().includes(feedSearch.toLowerCase()) ||
+            c.artist?.toLowerCase().includes(feedSearch.toLowerCase());
+        const dayMatch = !filterDay || c.day === filterDay;
+        const areaMatch = !filterArea || c.area === filterArea;
+        const favoriteMatch = !filterFavorites || c.is_favorite;
+        return searchMatch && dayMatch && areaMatch && favoriteMatch;
+    });
 
     const [confirmOpen, setConfirmOpen] = React.useState(false);
     const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null);
@@ -78,6 +91,7 @@ export const FeedTab: React.FC<FeedTabProps> = ({
                             variant={viewMode === "grid" ? "card" : "row"}
                             onEdit={(step) => onEditCircle(circle, step)}
                             onDelete={initiateDelete}
+                            onToggleFavorite={onToggleFavorite}
                         />
                     ))
                 ) : (
