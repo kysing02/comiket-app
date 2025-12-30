@@ -21,6 +21,9 @@ interface SubHeaderProps {
         purchasedCount: number;
         totalCount: number;
     };
+    onSort?: (key: string) => void;
+    sortConfig?: { key: string, direction: 'asc' | 'desc' } | null;
+    onClearFilters?: () => void;
 }
 
 export function SubHeader({
@@ -33,9 +36,17 @@ export function SubHeader({
     setSearchQuery,
     setIsFilterModalOpen,
     hasFilters,
-    stats
+    stats,
+    onSort,
+    sortConfig,
+    onClearFilters
 }: SubHeaderProps) {
     if (activeTab !== "feed" && activeTab !== "list") return null;
+
+    const SortIcon = ({ column }: { column: string }) => {
+        if (sortConfig?.key !== column) return <span className={styles.sortPlaceholder} />;
+        return <span className={styles.sortIcon}>{sortConfig.direction === 'asc' ? '▲' : '▼'}</span>;
+    };
 
     return (
         <div className={styles.subHeader}>
@@ -94,6 +105,21 @@ export function SubHeader({
                         purchasedCount={stats.purchasedCount}
                         totalCount={stats.totalCount}
                     />
+
+                    <div className={styles.tableHeader}>
+                        <div className={`${styles.colStatus} ${styles.sortable}`} onClick={() => onSort?.('status')}>
+                            Done <SortIcon column="status" />
+                        </div>
+                        <div className={`${styles.colInfo} ${styles.sortable}`} onClick={() => onSort?.('gojuon')}>
+                            Circle / Item <SortIcon column="gojuon" />
+                        </div>
+                        <div className={`${styles.colPrice} ${styles.sortable}`} onClick={() => onSort?.('price')}>
+                            Price <SortIcon column="price" />
+                        </div>
+                        <div className={styles.colClear} onClick={onClearFilters}>
+                            CLEAR
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

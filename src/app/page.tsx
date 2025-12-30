@@ -51,6 +51,7 @@ export default function Home() {
     searchQuery, setSearchQuery,
     filterBuyer, setFilterBuyer,
     sortConfig, setSortConfig,
+    resetFilters,
     sortedItems,
     purchasedPrice, totalPrice, purchasedCount, totalCount
   } = useShoppingFilters(items);
@@ -136,6 +137,13 @@ export default function Home() {
         setIsFilterModalOpen={setIsFilterModalOpen}
         hasFilters={!!(filterDay || filterArea || filterPriority.length > 0 || filterTags.length > 0 || filterBuyer)}
         stats={{ purchasedPrice, totalPrice, purchasedCount, totalCount }}
+        onSort={(key: string) => {
+          let direction: 'asc' | 'desc' = 'asc';
+          if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
+          setSortConfig({ key, direction });
+        }}
+        sortConfig={sortConfig}
+        onClearFilters={resetFilters}
       />
 
       <ShoppingListFilterModal
@@ -175,6 +183,7 @@ export default function Home() {
                   if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') direction = 'desc';
                   setSortConfig({ key, direction });
                 }}
+                onClearFilters={resetFilters}
                 onUpdate={(silent = false) => {
                   fetchItems(silent);
                   fetchCircles(silent);

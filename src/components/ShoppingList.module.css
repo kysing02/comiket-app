@@ -6,6 +6,7 @@
 }
 .container :global(input[type=number]) {
   -moz-appearance: textfield; /* Firefox */
+  appearance: textfield;
 }
 
 .container {
@@ -65,8 +66,6 @@
     gap: 12px;
     margin-bottom: 1.5rem;
 }
-
-
 
 .searchBarRow {
     display: flex;
@@ -215,18 +214,6 @@
     padding-bottom: 0.5rem;
 }
 
-.tableHeader {
-    display: flex;
-    padding: 0 0.75rem 0.5rem 0.75rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    width: 100%;
-    gap: 0.5rem;
-}
-
 .sortable {
     cursor: pointer;
     display: flex;
@@ -247,6 +234,7 @@
 .sortPlaceholder {
     width: 0.6rem;
 }
+
 
 
 .list {
@@ -277,7 +265,7 @@
 .tableRow {
     display: flex;
     align-items: center;
-    padding: 0.5rem;
+    padding: 0.5rem 0.75rem;
     gap: 0.5rem;
     border-radius: 12px;
     background: rgba(20, 20, 22, 0.6);
@@ -522,15 +510,28 @@
     text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
 }
 
-/* 3. Meta */
-.colMeta {
+/* 3. Price */
+.colPrice {
     width: 80px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--secondary);
+    flex-shrink: 0;
+}
+
+/* 4. Meta */
+.colMeta {
+    width: 60px;
     /* Fixed width to prevent squish */
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.3rem;
     flex-shrink: 0;
+    display: none; /* Hidden now as it's redundant with Price column for main info */
 }
 
 .qtyBadge {
@@ -596,16 +597,16 @@
     font-weight: 200;
 }
 
-/* 5. Action */
+/* 5. Action / Clear */
 .colAction {
-    width: 40px;
-    /* Widened for 2 buttons */
+    width: 50px;
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 0.2rem;
     flex-shrink: 0;
 }
+
 
 .imgBtn {
     background: transparent;
@@ -708,5 +709,10 @@
     .itemMetadata {
         margin-left: auto;
         align-items: flex-end;
+    }
+
+    .colPrice {
+        width: 60px;
+        font-size: 0.75rem;
     }
 }

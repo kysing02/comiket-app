@@ -14,6 +14,7 @@ interface ShoppingListProps {
     dbBuyers: any[];
     sortConfig: { key: string, direction: 'asc' | 'desc' } | null;
     onSort: (key: string) => void;
+    onClearFilters: () => void;
 }
 
 export default function ShoppingList({
@@ -22,7 +23,8 @@ export default function ShoppingList({
     onEditCircle,
     dbBuyers,
     sortConfig,
-    onSort
+    onSort,
+    onClearFilters
 }: ShoppingListProps) {
     // Lightbox State
     const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -84,11 +86,6 @@ export default function ShoppingList({
         setPendingDelete(null);
     };
 
-    const SortIcon = ({ column }: { column: string }) => {
-        if (sortConfig?.key !== column) return <span className={styles.sortPlaceholder} />;
-        return <span className={styles.sortIcon}>{sortConfig.direction === 'asc' ? '▲' : '▼'}</span>;
-    };
-
     return (
         <div className={styles.container}>
             <ConfirmModal
@@ -102,16 +99,6 @@ export default function ShoppingList({
             />
 
             <div className={styles.tableScroll}>
-                <div className={styles.tableHeader}>
-                    <div className={`${styles.colStatus} ${styles.sortable}`} onClick={() => onSort('status')}>
-                        Done <SortIcon column="status" />
-                    </div>
-                    <div className={`${styles.colInfo} ${styles.sortable}`} onClick={() => onSort('gojuon')}>
-                        Circle / Item <SortIcon column="gojuon" />
-                    </div>
-                    <div className={styles.colAction}>Img</div>
-                </div>
-
                 <div className={styles.list}>
                     {items.map((item) => (
                         <ShoppingItemRow
@@ -138,6 +125,6 @@ export default function ShoppingList({
                 imageUrls={lightboxImages}
                 onClose={() => setLightboxOpen(false)}
             />
-        </div>
+        </div >
     );
 }

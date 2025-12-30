@@ -68,7 +68,6 @@ export const ShoppingItemRow: React.FC<ShoppingItemRowProps> = ({
 
                     <div className={styles.itemMetadata}>
                         <div className={styles.metadataGroup}>
-                            <span className={styles.itemPrice}>¥{item.price?.toLocaleString()}</span>
                             <button
                                 className={styles.editBtn}
                                 onClick={(e) => {
@@ -109,6 +108,12 @@ export const ShoppingItemRow: React.FC<ShoppingItemRowProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* 3. Price Column */}
+            <div className={styles.colPrice}>
+                ¥{item.price?.toLocaleString()}
+            </div>
+
 
             {/* 5. Image & Delete Action */}
             <div className={styles.colAction}>

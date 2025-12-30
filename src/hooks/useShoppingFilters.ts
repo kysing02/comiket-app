@@ -138,6 +138,16 @@ export function useShoppingFilters(items: any[]) {
     const totalCount = filteredItems.length;
     const purchasedCount = filteredItems.filter(it => it.is_purchased).length;
 
+    const resetFilters = () => {
+        setFilterDay(null);
+        setFilterArea(null);
+        setFilterPriority([]);
+        setFilterTags([]);
+        setSearchQuery("");
+        setFilterBuyer(null);
+        setSortConfig({ key: 'circle', direction: 'asc' });
+    };
+
     return {
         filterDay, setFilterDay,
         filterArea, setFilterArea,
@@ -146,6 +156,7 @@ export function useShoppingFilters(items: any[]) {
         searchQuery, setSearchQuery,
         filterBuyer, setFilterBuyer,
         sortConfig, setSortConfig,
+        resetFilters,
         filteredItems,
         sortedItems,
         totalPrice,
