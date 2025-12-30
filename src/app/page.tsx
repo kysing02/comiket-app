@@ -14,12 +14,18 @@ import { SettingsTab } from "./components/SettingsTab";
 import { ShoppingListFilterModal } from "@/components/ShoppingList/components/ShoppingListFilterModal";
 import { FeedFilterModal } from "./components/FeedFilterModal";
 import { SubHeader } from "./components/SubHeader";
+import { LogViewer } from "@/components/LogViewer";
+import { logger } from "@/lib/logger";
 
 import { useAppInitialization } from "@/hooks/useAppInitialization";
 import { useSupabaseData } from "@/hooks/useSupabaseData";
 import { useShoppingFilters } from "@/hooks/useShoppingFilters";
 
 export default function Home() {
+  useEffect(() => {
+    logger.app("Comiket App Initialized");
+  }, []);
+
   const {
     activeTab,
     setActiveTab,
@@ -38,11 +44,14 @@ export default function Home() {
     loading,
     fetchItems,
     fetchCircles,
+    fetchScrapedPosts,
     handleMarkAsRead,
     addBuyer,
     removeBuyer,
     updateBuyerName,
-    handleDeleteCircle
+    handleDeleteCircle,
+    aiPaused,
+    toggleAiExtraction
   } = useSupabaseData();
 
   const {
@@ -90,26 +99,75 @@ export default function Home() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Scroll Persistence
+  const prevHasFiltersRef = useRef<Record<string, boolean>>({ feed: false, list: false });
+  const isRestoringRef = useRef(false);
+
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
+
+    const hasFeedFilters = !!(feedSearch || feedFilterDay || feedFilterArea || filterFavorites);
+    const hasListFilters = !!(searchQuery || filterDay || filterArea || filterPriority.length > 0 || filterTags.length > 0 || filterBuyer);
+    const currentHasFilters = activeTab === "feed" ? hasFeedFilters : (activeTab === "list" ? hasListFilters : false);
+
     const handleScroll = () => {
+      if (isRestoringRef.current) return;
+
       const positions = JSON.parse(localStorage.getItem("scrollPositions") || "{}");
       positions[activeTab] = container.scrollTop;
       localStorage.setItem("scrollPositions", JSON.stringify(positions));
+
+      // If NOT filtered, also save as "base" position
+      if (!currentHasFilters) {
+        const basePositions = JSON.parse(localStorage.getItem("baseScrollPositions") || "{}");
+        basePositions[activeTab] = container.scrollTop;
+        localStorage.setItem("baseScrollPositions", JSON.stringify(basePositions));
+      }
     };
+
     container.addEventListener("scroll", handleScroll);
     return () => container.removeEventListener("scroll", handleScroll);
-  }, [activeTab]);
+  }, [activeTab, feedSearch, feedFilterDay, feedFilterArea, filterFavorites, searchQuery, filterDay, filterArea, filterPriority, filterTags, filterBuyer]);
 
+  // Handle restoration on tab change or filter clear
   useEffect(() => {
+    const hasFeedFilters = !!(feedSearch || feedFilterDay || feedFilterArea || filterFavorites);
+    const hasListFilters = !!(searchQuery || filterDay || filterArea || filterPriority.length > 0 || filterTags.length > 0 || filterBuyer);
+
+    const prevHasFilters = prevHasFiltersRef.current[activeTab];
+    const currentHasFilters = activeTab === "feed" ? hasFeedFilters : (activeTab === "list" ? hasListFilters : false);
+
+    if (scrollRef.current) {
+      if (prevHasFilters && !currentHasFilters) {
+        // Filters were cleared, restore base position
+        const basePositions = JSON.parse(localStorage.getItem("baseScrollPositions") || "{}");
+        const targetPos = basePositions[activeTab] || 0;
+
+        isRestoringRef.current = true;
+        scrollRef.current.scrollTop = targetPos;
+        setTimeout(() => { isRestoringRef.current = false; }, 100);
+      } else if (!prevHasFilters && currentHasFilters) {
+        // Filters were applied, scroll to top to show results
+        scrollRef.current.scrollTop = 0;
+      }
+    }
+
+    prevHasFiltersRef.current[activeTab] = currentHasFilters;
+  }, [activeTab, feedSearch, feedFilterDay, feedFilterArea, filterFavorites, searchQuery, filterDay, filterArea, filterPriority, filterTags, filterBuyer]);
+
+  // Initial load or Tab change restoration
+  useEffect(() => {
+    if (loading) return;
+
     const savedScrolls = localStorage.getItem("scrollPositions");
     if (savedScrolls && scrollRef.current) {
       try {
         const positions = JSON.parse(savedScrolls);
         if (positions[activeTab] !== undefined) {
+          isRestoringRef.current = true;
           setTimeout(() => {
             if (scrollRef.current) scrollRef.current.scrollTop = positions[activeTab];
+            setTimeout(() => { isRestoringRef.current = false; }, 100);
           }, 50);
         } else {
           scrollRef.current.scrollTop = 0;
@@ -135,10 +193,23 @@ export default function Home() {
       image_urls: post.image_urls || [],
       scrapedContent: post.content,
       scraped_id: post.id,
-      username: post.username
+      username: post.username,
+      extraction_status: post.extraction_status,
+      extracted_data: post.extracted_data
     });
     setIsModalOpen(true);
   };
+
+  // Merge live scraped post data if we're editing an imported post
+  const activeInitialData = (() => {
+    if (!editingCircle?.scraped_id) return editingCircle;
+    const post = scrapedPosts.find(p => p.id === editingCircle.scraped_id);
+    if (!post) return editingCircle;
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id: _, ...postData } = post;
+    return { ...editingCircle, ...postData };
+  })();
 
   return (
     <div className={styles.dashboard}>
@@ -171,6 +242,8 @@ export default function Home() {
         }}
         sortConfig={sortConfig}
         onClearFilters={resetFilters}
+        aiPaused={aiPaused}
+        onToggleAi={toggleAiExtraction}
       />
 
       <FeedFilterModal
@@ -284,6 +357,7 @@ export default function Home() {
               filterDay={feedFilterDay}
               filterArea={feedFilterArea}
               filterFavorites={filterFavorites}
+              aiPaused={aiPaused}
             />
           )}
         </section>
@@ -298,15 +372,18 @@ export default function Home() {
       <AddItemModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSuccess={() => {
-          fetchItems(true);
-          fetchCircles(true);
-        }}
-        initialData={editingCircle}
+        initialData={activeInitialData}
         initialStep={modalStep}
         dbBuyers={dbBuyers}
         globalSettings={appSettings}
+        onSuccess={() => {
+          fetchItems(true);
+          fetchCircles(true);
+          fetchScrapedPosts(true);
+        }}
       />
+
+      <LogViewer />
     </div>
   );
 }

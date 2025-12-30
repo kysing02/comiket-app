@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, LayoutGrid, LayoutList, Filter } from "lucide-react";
+import { Search, LayoutGrid, LayoutList, Filter, X, Play, Pause } from "lucide-react";
 import { ShoppingStats } from "@/components/ShoppingList/components/ShoppingStats";
 import styles from "./SubHeader.module.css";
 
@@ -27,6 +27,8 @@ interface SubHeaderProps {
     onSort?: (key: string) => void;
     sortConfig?: { key: string, direction: 'asc' | 'desc' } | null;
     onClearFilters?: () => void;
+    aiPaused?: boolean;
+    onToggleAi?: () => void;
 }
 
 export function SubHeader({
@@ -45,7 +47,9 @@ export function SubHeader({
     stats,
     onSort,
     sortConfig,
-    onClearFilters
+    onClearFilters,
+    aiPaused,
+    onToggleAi
 }: SubHeaderProps) {
     if (activeTab !== "feed" && activeTab !== "list") return null;
 
@@ -66,6 +70,15 @@ export function SubHeader({
                             value={feedSearch}
                             onChange={(e) => setFeedSearch(e.target.value)}
                         />
+                        {feedSearch && (
+                            <button
+                                className={styles.clearBtn}
+                                onClick={() => setFeedSearch("")}
+                                aria-label="Clear search"
+                            >
+                                <X size={16} />
+                            </button>
+                        )}
                     </div>
                     <div className={styles.viewToggle}>
                         <button
@@ -79,6 +92,13 @@ export function SubHeader({
                             onClick={() => setViewMode('list')}
                         >
                             <LayoutList size={18} />
+                        </button>
+                        <button
+                            className={`${styles.filterBtn} ${aiPaused ? styles.aiPaused : styles.aiActive}`}
+                            onClick={onToggleAi}
+                            title={aiPaused ? "Resume AI Extraction" : "Pause AI Extraction"}
+                        >
+                            {aiPaused ? <Play size={18} /> : <Pause size={18} />}
                         </button>
                         <button
                             className={`${styles.filterBtn} ${hasFeedFilters ? styles.hasFilters : ""}`}
@@ -102,6 +122,15 @@ export function SubHeader({
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
+                            {searchQuery && (
+                                <button
+                                    className={styles.clearBtn}
+                                    onClick={() => setSearchQuery("")}
+                                    aria-label="Clear search"
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
                         </div>
                         <button
                             className={`${styles.filterBtn} ${hasFilters ? styles.hasFilters : ""}`}

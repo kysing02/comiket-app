@@ -6,6 +6,7 @@ interface ScrapedInboxProps {
     searchQuery: string;
     handleMarkAsRead: (postId: string) => void;
     handleImportPost: (post: any) => void;
+    aiPaused: boolean;
 }
 
 export const ScrapedInbox: React.FC<ScrapedInboxProps> = ({
@@ -13,6 +14,7 @@ export const ScrapedInbox: React.FC<ScrapedInboxProps> = ({
     searchQuery,
     handleMarkAsRead,
     handleImportPost,
+    aiPaused,
 }) => {
     const filteredPosts = posts.filter(p => !searchQuery ||
         p.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -30,6 +32,10 @@ export const ScrapedInbox: React.FC<ScrapedInboxProps> = ({
                 {filteredPosts.map((post) => (
                     <div key={post.id} className={`${styles.scrapedCard} glass`}>
                         <div className={styles.scrapedHeader}>
+                            <div className={styles.scrapedStatusLine}>
+                                <div className={`${styles.statusLamp} ${styles[(aiPaused && post.extraction_status === 'pending') ? 'paused' : (post.extraction_status || 'pending')]}`} />
+                                <span>{(aiPaused && post.extraction_status === 'pending') ? 'paused' : (post.extraction_status || 'pending')}</span>
+                            </div>
                             <span className={styles.scrapedArtist}>{post.username || "X Post"}</span>
                         </div>
                         <div className={styles.scrapedContent}>

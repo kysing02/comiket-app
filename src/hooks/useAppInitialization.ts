@@ -53,16 +53,36 @@ export function useAppInitialization() {
         const handleOffline = () => setIsOffline(true);
         const handleOnline = () => setIsOffline(false);
 
-        window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-        window.addEventListener("offline", handleOffline);
-        window.addEventListener("online", handleOnline);
-
         if (!navigator.onLine) setIsOffline(true);
+
+        // Service Worker Update logic
+        const handleControllerChange = () => {
+            window.location.reload();
+        };
+
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
+        }
+
+        // Check for updates on focus
+        const handleFocus = async () => {
+            if ("serviceWorker" in navigator) {
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    registration.update().catch(console.error);
+                }
+            }
+        };
+        window.addEventListener("focus", handleFocus);
 
         return () => {
             window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
             window.removeEventListener("offline", handleOffline);
             window.removeEventListener("online", handleOnline);
+            if ("serviceWorker" in navigator) {
+                navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+            }
+            window.removeEventListener("focus", handleFocus);
         };
     }, []);
 

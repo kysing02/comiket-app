@@ -20,6 +20,7 @@ interface FeedTabProps {
     filterDay: string | null;
     filterArea: string | null;
     filterFavorites: boolean;
+    aiPaused: boolean;
 }
 
 export const FeedTab: React.FC<FeedTabProps> = ({
@@ -37,6 +38,7 @@ export const FeedTab: React.FC<FeedTabProps> = ({
     filterDay,
     filterArea,
     filterFavorites,
+    aiPaused,
 }) => {
     const filteredCircles = circles.filter(c => {
         const searchMatch = !feedSearch ||
@@ -80,6 +82,7 @@ export const FeedTab: React.FC<FeedTabProps> = ({
                 searchQuery={feedSearch}
                 handleMarkAsRead={handleMarkAsRead}
                 handleImportPost={handleImportPost}
+                aiPaused={aiPaused}
             />
 
             <div className={viewMode === "grid" ? styles.artistGrid : styles.artistList}>

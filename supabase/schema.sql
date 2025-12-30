@@ -43,7 +43,12 @@ CREATE TABLE IF NOT EXISTS scraped_posts (
     image_urls TEXT[], -- Array of image URLs
     username TEXT,     -- X Username (display name)
     is_read BOOLEAN DEFAULT FALSE,
-    raw_data JSONB
+    raw_data JSONB,
+    extraction_status TEXT DEFAULT 'pending', -- 'pending', 'processing', 'ready', 'paused', 'error'
+    extraction_retry_count INTEGER DEFAULT 0,
+    extraction_last_attempt TIMESTAMP WITH TIME ZONE,
+    extraction_error TEXT,
+    extracted_data JSONB
 );
 
 -- Create a table for buyers
@@ -62,6 +67,13 @@ CREATE TABLE IF NOT EXISTS item_buyers (
     UNIQUE(item_id, buyer_id)
 );
 
+-- Create a table for app_settings (global state)
+CREATE TABLE IF NOT EXISTS app_settings (
+    id TEXT PRIMARY KEY,
+    ai_extraction_paused BOOLEAN DEFAULT FALSE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- RLS (Row Level Security) - Simplified for now as it's for private use
 -- In a real app, you'd add policies here.
 ALTER TABLE circles ENABLE ROW LEVEL SECURITY;
@@ -69,6 +81,7 @@ ALTER TABLE items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scraped_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE buyers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE item_buyers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
 
 -- Allow all for authenticated users (or public if you want shared access without login for now)
 CREATE POLICY "Public Read/Write Access" ON circles FOR ALL USING (true) WITH CHECK (true);
@@ -76,3 +89,4 @@ CREATE POLICY "Public Read/Write Access" ON items FOR ALL USING (true) WITH CHEC
 CREATE POLICY "Public Read/Write Access" ON scraped_posts FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Read/Write Access" ON buyers FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Read/Write Access" ON item_buyers FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public Read/Write Access" ON app_settings FOR ALL USING (true) WITH CHECK (true);

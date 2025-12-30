@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { performOCR } from "@/lib/ai";
 import { standardizeLocation } from "@/lib/location";
+import { logger } from "@/lib/logger";
 
 interface UseAddItemModalProps {
     isOpen: boolean;
@@ -128,7 +129,7 @@ export function useAddItemModal({
                         setItems(d.items);
                     }
                 } catch (e) {
-                    console.error("Draft parse error", e);
+                    logger.app("Draft parse error", e, 'ERROR');
                 }
             } else {
                 setCircleName(initialData.name || "");
@@ -174,7 +175,7 @@ export function useAddItemModal({
                     setXUrl(d.xUrl);
                     setItems(d.items);
                 } catch (e) {
-                    console.error("Draft parse error", e);
+                    logger.app("Draft parse error", e, 'ERROR');
                 }
             } else {
                 setCircleName("");
@@ -190,42 +191,10 @@ export function useAddItemModal({
         setIsInitialized(true);
     }, [initialData, isOpen]);
 
-    const handleFetch = async () => {
-        const validImages = priceListImages.filter(img => img.trim() !== "");
-        if (!xUrl && validImages.length === 0) return;
-        setLoading(true);
-        try {
-            let contextText = initialData?.scrapedContent || xUrl;
-            const imageUrls = validImages.length > 0 ? validImages : (initialData?.image_urls || []);
-
-            if (ocrMethod === "combined" && imageUrls.length > 0) {
-                const ocrResult = await performOCR(imageUrls[0]);
-                contextText += `\n\n[OCR Text from Image]:\n${ocrResult}`;
-            }
-
-            const response = await fetch("/api/extract", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    postText: contextText,
-                    imageUrls: ocrMethod === "vision" ? imageUrls : [],
-                    model: aiModel,
-                    includeItems: extractItems,
-                    authorName: artist || initialData?.username
-                }),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                if (errorData.error === 'QUOTA_EXCEEDED') {
-                    setRetryTimer(errorData.retryAfter || 60);
-                    throw new Error(errorData.message);
-                }
-                throw new Error(errorData.error || "API Route failed");
-            }
-
-            const data = await response.json();
-
+    // Auto-populate when extraction status becomes 'ready'
+    useEffect(() => {
+        if (isOpen && initialData?.extraction_status === 'ready' && initialData.extracted_data && !circleName) {
+            const data = initialData.extracted_data;
             setCircleName(data.circle?.name || "");
             setArtist(data.circle?.artist || "");
             setDay(data.circle?.day || "1");
@@ -251,9 +220,92 @@ export function useAddItemModal({
                     tags: []
                 })));
             }
-        } catch (error) {
-            console.error("Failed to fetch data:", error);
-            alert("Failed to extract data. Please enter manually.");
+        }
+    }, [isOpen, initialData?.extraction_status, initialData?.extracted_data]);
+
+    const handleCancel = async () => {
+        if (initialData?.scraped_id && initialData?.extraction_status === 'processing') {
+            // If we cancel while it's processing, we might want to tell the server.
+            // For now, let's just mark it as pending so it can be retried or ignored.
+            await supabase.from('scraped_posts').update({ extraction_status: 'pending' }).eq('id', initialData.scraped_id);
+        }
+        onClose();
+    };
+
+    const handleFetch = async () => {
+        const validImages = priceListImages.filter(img => img.trim() !== "");
+        if (!xUrl && validImages.length === 0) return;
+        setLoading(true);
+        try {
+            if (initialData?.scraped_id) {
+                await supabase.from('scraped_posts').update({ extraction_status: 'processing' }).eq('id', initialData.scraped_id);
+            }
+            let contextText = initialData?.scrapedContent || xUrl;
+            const imageUrls = validImages.length > 0 ? validImages : (initialData?.image_urls || []);
+
+            if (ocrMethod === "combined" && imageUrls.length > 0) {
+                const ocrResult = await performOCR(imageUrls[0]);
+                contextText += `\n\n[OCR Text from Image]:\n${ocrResult}`;
+            }
+
+            const response = await fetch("/api/extract", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    postText: contextText,
+                    imageUrls: ocrMethod === "vision" ? imageUrls : [],
+                    model: aiModel,
+                    includeItems: extractItems,
+                    authorName: artist || initialData?.username
+                }),
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                if (initialData?.scraped_id) {
+                    await supabase.from('scraped_posts').update({
+                        extraction_status: 'ready',
+                        extracted_data: data
+                    }).eq('id', initialData.scraped_id);
+                }
+                setCircleName(data.circle?.name || "");
+                setArtist(data.circle?.artist || "");
+                setDay(data.circle?.day || "1");
+
+                if (data.circle?.formatted_location) {
+                    setLocation(data.circle.formatted_location);
+                } else {
+                    const area = data.circle?.area || "";
+                    const block = data.circle?.block || "";
+                    const sn = data.circle?.space_number || "";
+                    setLocation(standardizeLocation(area, block, sn));
+                }
+
+                if (data.items && data.items.length > 0) {
+                    setItems(data.items.map((it: any) => ({
+                        id: Math.random().toString(),
+                        name: it.name,
+                        price: it.price?.toString() || "0",
+                        quantity: 0,
+                        priority: it.priority || "Medium",
+                        buyerIds: [],
+                        isWanted: false,
+                        tags: []
+                    })));
+                }
+            } else {
+                if (data.error === "QUOTA_EXCEEDED") {
+                    setRetryTimer(60);
+                } else {
+                    throw new Error(data.error || "Extraction failed");
+                }
+            }
+        } catch (error: any) {
+            if (initialData?.scraped_id) {
+                await supabase.from('scraped_posts').update({ extraction_status: 'error' }).eq('id', initialData.scraped_id);
+            }
+            logger.api("AI Extraction failed", error, 'ERROR');
+            alert(`Error: ${error.message}`);
         } finally {
             setLoading(false);
         }
@@ -450,7 +502,7 @@ export function useAddItemModal({
             onSuccess();
             onClose();
         } catch (error) {
-            console.error("Save failed:", error);
+            logger.db("Save failed", error, 'ERROR');
             alert("Failed to save. Check console.");
         } finally {
             setLoading(false);
@@ -501,6 +553,8 @@ export function useAddItemModal({
         handleItemChange,
         toggleBuyer,
         toggleTag,
-        handleSubmit
+        handleSubmit,
+        handleCancel,
+        extractionStatus: initialData?.extraction_status
     };
 }

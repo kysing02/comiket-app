@@ -1,4 +1,5 @@
 import { createWorker } from 'tesseract.js';
+import { logger } from './logger';
 
 /**
  * Basic OCR to check if an image is likely a price list or "Oshinagaki".
@@ -18,7 +19,7 @@ export async function isLikelyPriceList(imageUrl: string): Promise<boolean> {
 
     return hasPricePattern || hasKeywords;
   } catch (error) {
-    console.error("OCR Error:", error);
+    logger.api("OCR Error", error, 'ERROR');
     return false;
   }
 }
@@ -33,7 +34,7 @@ export async function performOCR(imageUrl: string): Promise<string> {
     await worker.terminate();
     return text;
   } catch (error) {
-    console.error("OCR Performance Error:", error);
+    logger.api("OCR Performance Error", error, 'ERROR');
     return "";
   }
 }
@@ -72,6 +73,8 @@ export async function extractComiketData(postText: string, imageUrls: string[]) 
     }
   `;
 
+  logger.api("Sending AI extraction request", { postText, imageUrls });
+
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -92,9 +95,10 @@ export async function extractComiketData(postText: string, imageUrls: string[]) 
 
     const data = await response.json();
     const content = JSON.parse(data.choices[0].message.content);
+    logger.api("AI Extraction successful", content);
     return content;
   } catch (error) {
-    console.error("AI Extraction Error:", error);
+    logger.api("AI Extraction Error", error, 'ERROR');
     return {
       circle: { name: "", artist: "", day: "1", area: "East", block: "", space: "" },
       items: []

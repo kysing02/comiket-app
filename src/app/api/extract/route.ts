@@ -1,5 +1,29 @@
 import { NextResponse } from 'next/server';
 
+async function imageToBase64(url: string): Promise<{ data: string, mimeType: string } | null> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+    try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.statusText}`);
+        }
+        const blob = await response.blob();
+        const buffer = Buffer.from(await blob.arrayBuffer());
+        const mimeType = response.headers.get('content-type') || 'image/jpeg';
+        return {
+            data: buffer.toString('base64'),
+            mimeType
+        };
+    } catch (e: any) {
+        clearTimeout(timeoutId);
+        console.error(`Failed to fetch image ${url}:`, e.message || e);
+        throw e;
+    }
+}
+
 export async function POST(req: Request) {
     try {
         const { postText, imageUrls, model = 'gpt-4o-mini', authorName, includeItems } = await req.json();
@@ -15,7 +39,6 @@ export async function POST(req: Request) {
       
       【INPUT】
       Text: ${postText}
-      ${imageUrls && imageUrls.length > 0 ? `Images provided to Vision: ${imageUrls.join(', ')}` : ''}
       
       Return ONLY a JSON object:
       {
@@ -32,22 +55,32 @@ export async function POST(req: Request) {
       }
     `;
 
-        if (model === 'gemini-2.0-flash-exp' || model === 'gemini-2.0-flash' || model === 'gemini-1.5-flash' || model === 'gemini-3-flash-preview') {
+        if (model.startsWith('gemini')) {
             const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
             if (!geminiKey) {
                 return NextResponse.json({ error: 'Missing GOOGLE_GENERATIVE_AI_API_KEY' }, { status: 500 });
+            }
+
+            const imageParts = [];
+            if (imageUrls && imageUrls.length > 0) {
+                for (const url of imageUrls.slice(0, 4)) {
+                    const b64 = await imageToBase64(url);
+                    if (b64) {
+                        imageParts.push({
+                            inline_data: {
+                                mime_type: b64.mimeType,
+                                data: b64.data
+                            }
+                        });
+                    }
+                }
             }
 
             const contents = [
                 {
                     parts: [
                         { text: prompt },
-                        ...(imageUrls || []).map((url: string) => ({
-                            file_data: {
-                                file_uri: url,
-                                mime_type: "image/jpeg"
-                            }
-                        }))
+                        ...imageParts
                     ]
                 }
             ];

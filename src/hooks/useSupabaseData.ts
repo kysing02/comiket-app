@@ -3,12 +3,14 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { standardizeLocation } from "@/lib/location";
+import { logger } from "@/lib/logger";
 
 export function useSupabaseData() {
     const [items, setItems] = useState<any[]>([]);
     const [circles, setCircles] = useState<any[]>([]);
     const [scrapedPosts, setScrapedPosts] = useState<any[]>([]);
     const [dbBuyers, setDbBuyers] = useState<any[]>([]);
+    const [aiPaused, setAiPaused] = useState(false);
     const [loading, setLoading] = useState(true);
 
     const fetchItems = async (silent = false) => {
@@ -27,9 +29,10 @@ export function useSupabaseData() {
                 .order("created_at", { ascending: false });
 
             if (error) throw error;
+            logger.db(`Fetched ${data?.length || 0} items`);
             setItems(data || []);
         } catch (err: any) {
-            console.error("Error fetching items:", err.message || err);
+            logger.db(`Error fetching items: ${err.message || err}`, err, 'ERROR');
         } finally {
             if (!silent) setLoading(false);
         }
@@ -53,9 +56,10 @@ export function useSupabaseData() {
                 .order("formatted_location", { ascending: true });
 
             if (error) throw error;
+            logger.db(`Fetched ${data?.length || 0} circles`);
             setCircles(data || []);
         } catch (err) {
-            console.error("Error fetching circles:", err);
+            logger.db(`Error fetching circles`, err, 'ERROR');
         }
     };
 
@@ -68,9 +72,10 @@ export function useSupabaseData() {
                 .order("created_at", { ascending: false });
 
             if (error) throw error;
+            logger.db(`Fetched ${data?.length || 0} scraped posts`);
             setScrapedPosts(data || []);
         } catch (err) {
-            console.error("Error fetching posts:", err);
+            logger.db(`Error fetching posts`, err, 'ERROR');
         }
     };
 
@@ -81,12 +86,36 @@ export function useSupabaseData() {
                 .select("*")
                 .order("created_at", { ascending: true });
             if (error) throw error;
+            logger.db(`Fetched ${data?.length || 0} buyers`);
             setDbBuyers(data || []);
             return data || [];
         } catch (err) {
-            console.error("Error fetching buyers:", err);
+            logger.db(`Error fetching buyers`, err, 'ERROR');
             return [];
         }
+    };
+
+    const fetchAppSettings = async () => {
+        try {
+            const { data, error } = await supabase
+                .from("app_settings")
+                .select("*")
+                .eq("id", "global")
+                .single();
+            if (error) throw error;
+            setAiPaused(data?.ai_extraction_paused || false);
+        } catch (err) {
+            logger.db(`Error fetching app settings`, err, 'ERROR');
+        }
+    };
+
+    const toggleAiExtraction = async () => {
+        const newValue = !aiPaused;
+        const { error } = await supabase
+            .from("app_settings")
+            .update({ ai_extraction_paused: newValue })
+            .eq("id", "global");
+        if (!error) setAiPaused(newValue);
     };
 
     // Initial Fetch & Subscription
@@ -95,18 +124,38 @@ export function useSupabaseData() {
         fetchCircles();
         fetchScrapedPosts();
         fetchBuyers();
+        fetchAppSettings();
 
         const channel = supabase
             .channel("scraped_posts_changes")
             .on(
                 "postgres_changes",
                 { event: "*", schema: "public", table: "scraped_posts" },
-                () => fetchScrapedPosts()
+                () => fetchScrapedPosts(true)
+            )
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "app_settings" },
+                () => fetchAppSettings()
             )
             .subscribe();
 
+        // Heartbeat for background worker
+        const triggerWorker = async () => {
+            try {
+                await fetch('/api/worker');
+            } catch (e) {
+                console.error("Worker heartbeat failed", e);
+            }
+        };
+
+        // Trigger immediately on load and then every 60s
+        triggerWorker();
+        const heartbeat = setInterval(triggerWorker, 60000);
+
         return () => {
             supabase.removeChannel(channel);
+            clearInterval(heartbeat);
         };
     }, []);
 
@@ -119,13 +168,18 @@ export function useSupabaseData() {
                 try {
                     const parsed = JSON.parse(savedSettings);
                     if (currentDbBuyers.length === 0 && parsed.buyerList?.length > 0) {
-                        console.log("Migrating buyers to database...");
+                        logger.app("Migrating buyers to database...");
                         const toInsert = parsed.buyerList.map((name: string) => ({ name }));
                         const { error } = await supabase.from("buyers").insert(toInsert);
-                        if (!error) fetchBuyers();
+                        if (!error) {
+                            logger.db("Migrated buyers successfully");
+                            fetchBuyers();
+                        } else {
+                            logger.db("Failed to migrate buyers", error, 'ERROR');
+                        }
                     }
                 } catch (e) {
-                    console.error("Migration failed", e);
+                    logger.app("Migration failed", e, 'ERROR');
                 }
             }
         };
@@ -143,7 +197,7 @@ export function useSupabaseData() {
 
             if (toMigrate.length === 0) return;
 
-            console.log(`Migrating ${toMigrate.length} items to item_buyers...`);
+            logger.app(`Migrating ${toMigrate.length} items to item_buyers...`);
             const insertions: any[] = [];
             toMigrate.forEach(item => {
                 const buyer = dbBuyers.find(b =>
@@ -156,7 +210,12 @@ export function useSupabaseData() {
 
             if (insertions.length > 0) {
                 const { error } = await supabase.from("item_buyers").insert(insertions);
-                if (!error) fetchItems(true);
+                if (!error) {
+                    logger.db(`Migrated ${insertions.length} item-buyer links`);
+                    fetchItems(true);
+                } else {
+                    logger.db("Failed to migrate item_buyers", error, 'ERROR');
+                }
             }
         };
         migrateItemBuyers();
@@ -230,6 +289,8 @@ export function useSupabaseData() {
         addBuyer,
         removeBuyer,
         updateBuyerName,
-        handleDeleteCircle
+        handleDeleteCircle,
+        aiPaused,
+        toggleAiExtraction
     };
 }

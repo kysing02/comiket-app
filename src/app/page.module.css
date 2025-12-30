@@ -487,10 +487,41 @@
 
 .scrapedHeader {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   border-bottom: 1px solid var(--glass-border);
   padding-bottom: 0.5rem;
   margin-bottom: 0.25rem;
+  gap: 0.25rem;
+}
+
+.scrapedStatusLine {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.statusLamp {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 5px currentColor;
+}
+
+.statusLamp.pending { color: #f59e0b; background-color: #f59e0b; }
+.statusLamp.processing { 
+  color: #3b82f6; background-color: #3b82f6; 
+  animation: pulse 1s infinite alternate;
+}
+.statusLamp.ready { color: #10b981; background-color: #10b981; }
+.statusLamp.paused { color: #9ca3af; background-color: #9ca3af; }
+.statusLamp.error { color: #ef4444; background-color: #ef4444; }
+
+@keyframes pulse {
+  from { opacity: 0.5; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1.2); }
 }
 
 .scrapedArtist {

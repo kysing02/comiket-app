@@ -73,52 +73,54 @@ export default function ImageLightbox({ isOpen, imageUrls = [], initialIndex = 0
     };
 
     const zoomAt = useCallback((focalX: number, focalY: number, delta: number) => {
-        const s1 = scale;
-        const s2 = Math.max(0.5, Math.min(s1 + delta, 5));
-        if (s1 === s2) return;
+        setScale((s1) => {
+            const s2 = Math.max(0.4, Math.min(s1 + delta, 5));
+            if (s1 === s2) return s1;
 
-        const xValue = x.get();
-        const yValue = y.get();
+            const xValue = x.get();
+            const yValue = y.get();
 
-        const cx = viewport.width / 2;
-        const cy = viewport.height / 2;
+            const cx = viewport.width / 2;
+            const cy = viewport.height / 2;
 
-        const relX = focalX - cx;
-        const relY = focalY - cy;
+            const relX = focalX - cx;
+            const relY = focalY - cy;
 
-        // P_rel = x1 + P_img * s1 => P_img = (P_rel - x1) / s1
-        // x2 = P_rel - (P_rel - x1) * s2 / s1
-        const x2 = relX - ((relX - xValue) * s2) / s1;
-        const y2 = relY - ((relY - yValue) * s2) / s1;
+            // Maintain the same relative point on the image under the focal point
+            const x2 = relX - ((relX - xValue) * s2) / s1;
+            const y2 = relY - ((relY - yValue) * s2) / s1;
 
-        // Correctly calculate clamping boundaries
-        // Scale 1 already fits the image to the viewport (longer side hits edge)
-        // so boundaries are (imgWidth * scale - viewportWidth) / 2
-        const maxX = Math.max(0, (imgSize.width * s2 - viewport.width) / 2);
-        const maxY = Math.max(0, (imgSize.height * s2 - viewport.height) / 2);
+            // Clamping boundaries to prevent black gaps
+            const maxX = Math.max(0, (imgSize.width * s2 - viewport.width) / 2);
+            const maxY = Math.max(0, (imgSize.height * s2 - viewport.height) / 2);
 
-        const nextX = Math.max(-maxX, Math.min(x2, maxX));
-        const nextY = Math.max(-maxY, Math.min(y2, maxY));
+            x.set(Math.max(-maxX, Math.min(x2, maxX)));
+            y.set(Math.max(-maxY, Math.min(y2, maxY)));
 
-        x.set(nextX);
-        y.set(nextY);
-        setScale(s2);
-    }, [viewport, x, y, imgSize, scale]);
+            return s2;
+        });
+    }, [viewport.width, viewport.height, x, y, imgSize]);
 
     const handleWheel = (e: React.WheelEvent) => {
         e.preventDefault();
-        const zoomStep = 0.5;
-        const delta = e.deltaY > 0 ? -zoomStep : zoomStep;
+        // Slower, multiplicative-style zoom
+        const zoomStep = 0.15;
+        const delta = e.deltaY > 0 ? -zoomStep * scale : zoomStep * scale;
 
-        // If zooming out from scale 1, just trigger snap back if we go below
         zoomAt(e.clientX, e.clientY, delta);
 
-        // Debounced or immediate snap back for wheel if below 1
-        if (scale + delta < 1 && e.deltaY > 0) {
-            setTimeout(() => {
-                setScale(1);
-                animate(x, 0);
-                animate(y, 0);
+        // Immediate check for snap back if we are below 1
+        if (scale < 1) {
+            clearTimeout((window as any)._zoomTimeout);
+            (window as any)._zoomTimeout = setTimeout(() => {
+                setScale(s => {
+                    if (s < 1) {
+                        animate(x, 0, { type: "spring", stiffness: 400, damping: 35 });
+                        animate(y, 0, { type: "spring", stiffness: 400, damping: 35 });
+                        return 1;
+                    }
+                    return s;
+                });
             }, 100);
         }
     };
@@ -132,8 +134,10 @@ export default function ImageLightbox({ isOpen, imageUrls = [], initialIndex = 0
             const midY = (t1.clientY + t2.clientY) / 2;
 
             if (prevDist > 0) {
-                const diff = dist - prevDist;
-                zoomAt(midX, midY, diff * 0.015);
+                // Multiplicative zoom for pinch is much more accurate
+                const ratio = dist / prevDist;
+                const delta = scale * (ratio - 1);
+                zoomAt(midX, midY, delta);
             }
             setPrevDist(dist);
         }

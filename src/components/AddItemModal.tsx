@@ -62,8 +62,12 @@ export default function AddItemModal(props: AddItemModalProps) {
         handleItemChange,
         toggleBuyer,
         toggleTag,
-        handleSubmit
+        handleSubmit,
+        handleCancel,
+        extractionStatus
     } = useAddItemModal(props);
+
+    const isAiProcessing = extractionStatus === 'processing' || loading;
 
     if (!isOpen) return null;
 
@@ -77,7 +81,7 @@ export default function AddItemModal(props: AddItemModalProps) {
             >
                 <div className={styles.header}>
                     <h2>{step === 1 ? "Add Artist Info" : "Select Items to Buy"}</h2>
-                    <button className={styles.closeBtn} onClick={onClose}>
+                    <button className={styles.closeBtn} onClick={onClose} title="Minimize">
                         <X size={24} />
                     </button>
                 </div>
@@ -88,7 +92,7 @@ export default function AddItemModal(props: AddItemModalProps) {
                             <AIInputSection
                                 xUrl={xUrl}
                                 setXUrl={setXUrl}
-                                loading={loading}
+                                loading={isAiProcessing}
                                 handleFetch={handleFetch}
                                 priceListImages={priceListImages}
                                 retryTimer={retryTimer}
@@ -136,15 +140,15 @@ export default function AddItemModal(props: AddItemModalProps) {
 
                 <div className={styles.footer}>
                     {step === 2 && (
-                        <button className={styles.backBtn} onClick={() => setStep(1)} disabled={loading}>
+                        <button className={styles.backBtn} onClick={() => setStep(1)} disabled={isAiProcessing}>
                             <ChevronLeft size={16} /> Artist Info
                         </button>
                     )}
-                    <button className={styles.cancelBtn} onClick={onClose} disabled={loading}>
+                    <button className={styles.cancelBtn} onClick={handleCancel} disabled={isAiProcessing}>
                         Cancel
                     </button>
-                    <button className={styles.submitBtn} onClick={handleSubmit} disabled={loading}>
-                        {loading ? <Loader2 className={styles.spinning} /> : step === 1 ? "Next: Set Items" : "Save Artist"}
+                    <button className={styles.submitBtn} onClick={handleSubmit} disabled={isAiProcessing}>
+                        {isAiProcessing ? <Loader2 className={styles.spinning} /> : step === 1 ? "Next: Set Items" : "Save Artist"}
                     </button>
                 </div>
 
