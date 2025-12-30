@@ -11,6 +11,7 @@ import ImageLightbox from "./ImageLightbox";
 import { AISettings } from "./AddItemModal/components/AISettings";
 import { ArtistInfoForm } from "./AddItemModal/components/ArtistInfoForm";
 import { ItemListSection } from "./AddItemModal/components/ItemListSection";
+import { ConfirmModal } from "./ConfirmModal";
 
 interface AddItemModalProps {
     isOpen: boolean;
@@ -44,6 +45,10 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
     const [items, setItems] = useState([{ id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyerIds: [] as string[], isWanted: false, tags: [] as any[] }]);
     const [retryTimer, setRetryTimer] = useState<number | null>(null);
     const [isInitialized, setIsInitialized] = useState(false);
+
+    // Confirm Modal
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
 
     // Cleanup initialized state when modal closes
     useEffect(() => {
@@ -288,8 +293,16 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
         setItems([...items, { id: Math.random().toString(), name: "", price: "", quantity: 0, priority: "Medium", buyerIds: defaultBuyerId ? [defaultBuyerId] : [], isWanted: false, tags: [] }]);
     };
 
-    const removeItem = (index: number) => {
-        setItems(items.filter((_, i) => i !== index));
+    const requestRemoveItem = (index: number) => {
+        setDeleteIndex(index);
+        setConfirmOpen(true);
+    };
+
+    const confirmRemoveItem = () => {
+        if (deleteIndex !== null) {
+            setItems(items.filter((_, i) => i !== deleteIndex));
+            setDeleteIndex(null);
+        }
     };
 
     const handleItemChange = (index: number, field: string, value: any) => {
@@ -552,7 +565,7 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                             priceListImages={priceListImages}
                             dbBuyers={dbBuyers || []}
                             onItemChange={handleItemChange}
-                            onRemoveItem={removeItem}
+                            onRemoveItem={requestRemoveItem}
                             onToggleBuyer={toggleBuyer}
                             onToggleTag={toggleTag}
                             onAddItem={addItem}
@@ -582,6 +595,16 @@ export default function AddItemModal({ isOpen, onClose, onSuccess, initialData, 
                     onClose={() => setLightboxOpen(false)}
                 />
             </motion.div>
+
+            <ConfirmModal
+                isOpen={confirmOpen}
+                onClose={() => setConfirmOpen(false)}
+                onConfirm={confirmRemoveItem}
+                title="Remove Item"
+                message="Are you sure you want to remove this item from the list?"
+                isDanger={true}
+                confirmText="Remove"
+            />
         </div>
     );
 }

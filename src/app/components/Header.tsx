@@ -22,7 +22,6 @@ export const Header: React.FC<HeaderProps> = ({
                     {isOffline && (
                         <div className={styles.offlineBadge} title="Offline Mode">
                             <WifiOff size={16} />
-                            <span>Offline</span>
                         </div>
                     )}
                     {deferredPrompt && (

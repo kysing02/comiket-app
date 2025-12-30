@@ -45,7 +45,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 <span>Settings</span>
             </button>
             <button className={styles.fab} onClick={onAddClick} title="Add Item">
-                <Plus size={32} />
+                <Plus size={24} />
             </button>
         </nav>
     );

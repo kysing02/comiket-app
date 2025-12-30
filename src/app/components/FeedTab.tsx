@@ -3,6 +3,7 @@ import { Search, LayoutGrid, LayoutList, Compass } from "lucide-react";
 import styles from "../page.module.css";
 import ArtistCard from "@/components/ArtistCard";
 import { ScrapedInbox } from "./ScrapedInbox";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
 interface FeedTabProps {
     feedSearch: string;
@@ -34,8 +35,32 @@ export const FeedTab: React.FC<FeedTabProps> = ({
         c.artist?.toLowerCase().includes(feedSearch.toLowerCase())
     );
 
+    const [confirmOpen, setConfirmOpen] = React.useState(false);
+    const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null);
+
+    const initiateDelete = (id: string) => {
+        setPendingDeleteId(id);
+        setConfirmOpen(true);
+    };
+
+    const confirmDelete = () => {
+        if (pendingDeleteId) {
+            onDeleteCircle(pendingDeleteId);
+            setPendingDeleteId(null);
+        }
+    };
+
     return (
         <div className={styles.feedScrollArea}>
+            <ConfirmModal
+                isOpen={confirmOpen}
+                onClose={() => setConfirmOpen(false)}
+                onConfirm={confirmDelete}
+                title="Delete Artist?"
+                message="Are you sure you want to remove this artist? This cannot be undone."
+                isDanger={true}
+                confirmText="Delete"
+            />
             <div className={styles.feedSearchWrapper}>
                 <div className={styles.searchBox}>
                     <Search size={18} className={styles.searchIcon} />
@@ -80,7 +105,7 @@ export const FeedTab: React.FC<FeedTabProps> = ({
                             circle={circle}
                             variant={viewMode === "grid" ? "card" : "row"}
                             onEdit={(step) => onEditCircle(circle, step)}
-                            onDelete={onDeleteCircle}
+                            onDelete={initiateDelete}
                         />
                     ))
                 ) : (

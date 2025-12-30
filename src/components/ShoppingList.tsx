@@ -8,6 +8,7 @@ import ImageLightbox from "./ImageLightbox";
 import { ShoppingStats } from "./ShoppingList/components/ShoppingStats";
 import { ShoppingListFilterModal } from "./ShoppingList/components/ShoppingListFilterModal";
 import { ShoppingItemRow } from "./ShoppingList/components/ShoppingItemRow";
+import { ConfirmModal } from "./ConfirmModal";
 
 interface ShoppingListProps {
     items: any[];
@@ -27,6 +28,9 @@ export default function ShoppingList({ items, onUpdate, onEditCircle, dbBuyers }
     // Lightbox State
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+    // Confirm Modal State
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [pendingDelete, setPendingDelete] = useState<{ id: string, name: string } | null>(null);
 
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>({ key: 'circle', direction: 'asc' });
 
@@ -176,16 +180,22 @@ export default function ShoppingList({ items, onUpdate, onEditCircle, dbBuyers }
         }
     }
 
-    const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`Remove "${name}" from Shopping List? (Sets quantity to 0)`)) return;
+    const handleDelete = (id: string, name: string) => {
+        setPendingDelete({ id, name });
+        setConfirmOpen(true);
+    };
+
+    const executeDelete = async () => {
+        if (!pendingDelete) return;
 
         // Optimistic update would be nice, but silent refresh is also fine as requested
-        const { error } = await supabase.from("items").update({ quantity: 0 }).eq("id", id);
+        const { error } = await supabase.from("items").update({ quantity: 0 }).eq("id", pendingDelete.id);
         if (error) {
             console.error("Failed to update item", error);
         } else {
             onUpdate(true); // Silent refresh
         }
+        setPendingDelete(null);
     };
 
     const SortIcon = ({ column }: { column: string }) => {
@@ -223,6 +233,16 @@ export default function ShoppingList({ items, onUpdate, onEditCircle, dbBuyers }
                     totalCount={totalCount}
                 />
             </div>
+
+            <ConfirmModal
+                isOpen={confirmOpen}
+                onClose={() => setConfirmOpen(false)}
+                onConfirm={executeDelete}
+                title="Remove Item?"
+                message={`Are you sure you want to remove "${pendingDelete?.name}" from your shopping list?`}
+                confirmText="Remove"
+                isDanger={true}
+            />
 
             <ShoppingListFilterModal
                 isOpen={isFilterModalOpen}
